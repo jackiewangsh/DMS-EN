@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-4">
+    <a href="javascript:history.back()" class="text-sm hover:opacity-80" style="color:var(--text-dim);">
+        <i class="fas fa-arrow-left mr-1"></i>Back
+    </a>
+</div>
+<div class="glass-card rounded-xl p-6">
+    <div class="flex items-start gap-5 mb-6">
+        <div class="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(0,212,255,0.1);">
+            <i class="{{ file.icon or 'fas fa-file' }} text-3xl" style="color:var(--accent);"></i>
+        </div>
+        <div class="flex-1 min-w-0">
+            <h2 class="text-xl font-bold mb-2">{{ file.original_name }}</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div><span style="color:var(--text-dim);">Department：</span>{{ file.department }}</div>
+                <div><span style="color:var(--text-dim);">Type：</span>{{ file.file_type }}</div>
+                <div><span style="color:var(--text-dim);">Size：</span>{{ file.size_fmt }}</div>
+                <div><span style="color:var(--text-dim);">Upload User：</span>{{ file.uploader_name }}</div>
+                <div><span style="color:var(--text-dim);">Upload Time：</span>{{ file.created_at[:16] }}</div>
+                <div><span style="color:var(--text-dim);">Status：</span>
+                    <span class="status-badge {% if file.status=='Published' %}status-published{% elif file.status=='Pending Approval' %}status-pending{% else %}status-obsolete{% endif %}">
+                        {{ file.status }}
+                    </span>
+                </div>
+            </div>
+            <div class="mt-4 flex gap-3 flex-wrap">
+                <a href="{{ url_for('file_preview', file_id=file.id) }}"
+                   class="tech-btn px-5 py-2.5 rounded-lg text-white text-sm font-semibold" title="PreviewPDFFormat，Download Original textFor">
+                    <i class="fas fa-external-link-alt mr-2"></i>Preview
+                </a>
+                <a href="/download/{{ file.id }}?attach=1"
+                   class="tech-btn-secondary px-5 py-2.5 rounded-lg text-sm font-semibold" style="background:rgba(255,255,255,0.1); color:var(--text);">
+                    <i class="fas fa-download mr-2"></i>Download to ThisLoc
+                </a>
+                <button onclick="shareFile()" id="shareBtn"
+                        class="tech-btn-secondary px-5 py-2.5 rounded-lg text-sm font-semibold flex items-center gap-2"
+                        style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);">
+                    <i class="fas fa-link"></i>Share
+                </button>
+            </div>
+
+<!-- Share popup -->
+<div id="shareModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+    <div class="glass-card rounded-xl p-6" style="min-width:400px;max-width:500px;">
+        <div class="flex items-center justify-between mb-4">
+            <div class="text-sm font-bold" style="color:var(--accent);"><i class="fas fa-link mr-2"></i>File Share</div>
+            <button onclick="closeShareModal()" class="text-xs px-2 py-1 rounded" style="background:rgba(239,68,68,0.1);color:#f87171;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="shareLinkContainer" style="display:none;">
+            <p class="text-xs mb-2" style="color:var(--text-dim);">Share link（Has Expiry7Days）：</p>
+            <div class="flex gap-2 mb-3">
+                <input id="shareLinkInput" readonly class="flex-1 px-3 py-2 rounded-lg text-xs font-mono" style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;outline:none;">
+                <button onclick="copyShareLink()" class="px-3 py-2 rounded-lg text-xs font-semibold" style="background:rgba(0,212,255,0.15);color:var(--accent);border:1px solid rgba(0,212,255,0.2);"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+            <div id="shareMsg" class="text-xs mb-3" style="color:#4ade80;"></div>
+            <div class="text-xs mb-3" style="color:var(--text-dim);">Receive User Open link after，No Need toLogin Then View Or Download This File。</div>
+            {# UndoFeatureCan Through backend file_shares Table manual management #}
+        </div>
+        <div id="shareLoading" class="text-center py-4" style="color:var(--text-dim);">
+            <i class="fas fa-spinner fa-spin text-xl"></i>
+            <div class="text-xs mt-2">Now Generating share link...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function shareFile() {
+    var modal = document.getElementById('shareModal');
+    var loading = document.getElementById('shareLoading');
+    var container = document.getElementById('shareLinkContainer');
+    var msg = document.getElementById('shareMsg');
+    modal.style.display = 'flex';
+    loading.style.display = 'block';
+    container.style.display = 'none';
+    msg.textContent = '';
+
+    fetch('/api/file/share', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({file_id: '{{ file.id }}'})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        loading.style.display = 'none';
+        if (d.success) {
+            container.style.display = 'block';
+            document.getElementById('shareLinkInput').value = d.share_url;
+            document.getElementById('revokeBtn').dataset.token = '';
+            msg.textContent = d.message;
+        } else {
+            container.style.display = 'block';
+            msg.textContent = d.message || 'Generate share linkFailed';
+            msg.style.color = '#f87171';
+        }
+    });
+}
+
+function copyShareLink() {
+    var input = document.getElementById('shareLinkInput');
+    input.select();
+    document.execCommand('copy');
+    var msg = document.getElementById('shareMsg');
+    msg.textContent = 'AlreadyCopy to clipboard！';
+    msg.style.color = '#4ade80';
+}
+
+function closeShareModal() {
+    document.getElementById('shareModal').style.display = 'none';
+}
+document.getElementById('shareModal').addEventListener('click', function(e) {
+    if (e.target === this) closeShareModal();
+});
+</script>
+        </div>
+    </div>
+    
+    {% set ext = file.original_name.lower().split('.')[-1] %}
+    {% if ext in ['pdf'] %}
+    <!-- PDF Preview -->
+    <div class="preview-section">
+        <h3 class="text-lg font-semibold mb-3"><i class="fas fa-file-pdf mr-2" style="color:#ff6b6b;"></i>PDF Preview</h3>
+        <div class="preview-container" style="background:#f5f5f5; border-radius:8px; overflow:hidden;">
+            <iframe src="{{ url_for('file_preview', file_id=file.id) }}" 
+                    style="width:100%; height:70vh; border:none;"></iframe>
+        </div>
+    </div>
+    {% elif ext in ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] %}
+    <!-- Image Preview -->
+    <div class="preview-section">
+        <h3 class="text-lg font-semibold mb-3"><i class="fas fa-image mr-2" style="color:#4ecdc4;"></i>Image Preview</h3>
+        <div class="preview-container" style="background:#1a1a2e; border-radius:8px; padding:20px; text-align:center;">
+            <img src="{{ url_for('file_preview', file_id=file.id) }}" 
+                 alt="{{ file.original_name }}"
+                 style="max-width:100%; max-height:70vh; border-radius:4px;">
+        </div>
+    </div>
+    {% else %}
+    <!-- Not SupportPreview -->
+    <div class="preview-section">
+        <div class="unsupported-preview" style="text-align:center; padding:60px 20px; background:rgba(255,255,255,0.03); border-radius:12px;">
+            <i class="fas fa-file-download text-5xl mb-4" style="color:var(--accent); opacity:0.5;"></i>
+            <p style="color:var(--text-dim); font-size:1.1rem;">This File Type Not Supports Online Preview</p>
+            <p style="color:var(--text-dim); font-size:0.9rem; margin-top:8px;">Please Click Top buttonDownload to View Here</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

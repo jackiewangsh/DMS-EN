@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.wf-status-bar { background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(0,212,255,0.02)); border: 1px solid rgba(0,212,255,0.15); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; }
+.wf-node-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; border: 1px solid transparent; transition: all 0.2s; }
+.wf-node-item.current { border-color: var(--accent); background: rgba(0,212,255,0.08); }
+.wf-node-item.done { opacity: 0.7; }
+.wf-node-item .node-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+.wf-node-item .node-info { flex: 1; }
+.wf-node-item .node-name { font-size: 13px; font-weight: 600; }
+.wf-node-item .node-approvers { font-size: 11px; opacity: 0.6; }
+.wf-node-item .node-status { font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+.node-done { background: rgba(34,197,94,0.15); color: #4ade80; }
+.node-waiting { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.node-current { background: rgba(0,212,255,0.2); color: var(--accent); }
+.node-pending { background: rgba(148,163,184,0.1); color: #94a3b8; }
+.node-rejected { background: rgba(239,68,68,0.15); color: #f87171; }
+.wf-record-card { border-left: 3px solid transparent; padding-left: 12px; margin-bottom: 8px; }
+.wf-record-card.agree { border-color: #4ade80; }
+.wf-record-card.reject { border-color: #f87171; }
+.wf-record-card.init { border-color: var(--accent); }
+</style>
+
+<div class="mb-4">
+    <a href="{{ url_for('approvals') }}" class="text-sm hover:opacity-80" style="color:var(--text-dim);">
+        <i class="fas fa-arrow-left mr-1"></i>Back To Approval List
+    </a>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <!-- Left main body -->
+    <div class="lg:col-span-2">
+
+        <!-- WorkflowOverview card -->
+        <div class="glass-card rounded-xl p-6 mb-5">
+            <div class="flex items-center justify-between mb-3">
+                <h1 class="text-lg font-bold" style="color:var(--accent);">
+                    <i class="fas fa-tasks mr-2"></i>{{ workflow.serial_no }}
+                </h1>
+                <div>
+                    {% if workflow.status == 'In Progress' %}
+                    <span class="status-badge status-pending"><i class="fas fa-clock mr-1"></i>{{ workflow.current_node }}</span>
+                    {% elif workflow.status == 'Approved' %}
+                    <span class="status-badge" style="background:rgba(34,197,94,0.2);color:#22c55e;"><i class="fas fa-check mr-1"></i>Approved</span>
+                    {% elif workflow.status == 'Completed' %}
+                    <span class="status-badge status-published"><i class="fas fa-check mr-1"></i>Already Approved</span>
+                    {% elif workflow.status == 'Returned' %}
+                    <span class="status-badge status-obsolete"><i class="fas fa-times mr-1"></i>Returned</span>
+                    {% elif workflow.status == 'Already Cancelled' %}
+                    <span class="status-badge status-obsolete"><i class="fas fa-ban mr-1"></i>Already Cancelled</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-xl font-bold mb-3">{{ workflow.title }}</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                <div><span style="color:var(--text-dim);">Initiator：</span>{{ workflow.initiator_name }}</div>
+                <div><span style="color:var(--text-dim);">Initiated Time：</span>{{ workflow.created_at[:16] }}</div>
+                <div><span style="color:var(--text-dim);">Current Node：</span>{{ workflow.current_node }}</div>
+                <div><span style="color:var(--text-dim);">Workflow Status：</span>{{ workflow.status }}</div>
+            </div>
+        </div>
+
+        <!-- Apply Please Information -->
+        {% if workflow.apply_type or workflow.apply_reason or workflow.change_description %}
+        <div class="glass-card rounded-xl p-6 mb-5" style="border-left:3px solid var(--accent);">
+            <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+                <i class="fas fa-info-circle mr-2"></i>Apply Please Information
+            </h2>
+            <div class="space-y-3 text-sm">
+                {% if workflow.apply_type %}
+                <div class="flex gap-2">
+                    <span style="color:var(--text-dim);min-width:90px;">Apply Please Type：</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold"
+                          style="{% if workflow.apply_type == 'Obsolete' %}background:rgba(239,68,68,0.15);color:#f87171;{% elif workflow.apply_type == 'New Add' %}background:rgba(34,197,94,0.15);color:#4ade80;{% elif workflow.apply_type == 'Change' %}background:rgba(251,191,36,0.15);color:#fbbf24;{% else %}background:rgba(0,212,255,0.15);color:var(--accent);{% endif %}">
+                        {{ workflow.apply_type }}
+                    </span>
+                </div>
+                {% endif %}
+                {% if workflow.apply_reason %}
+                <div class="flex gap-2">
+                    <span style="color:var(--text-dim);min-width:90px;">Apply Please Reason：</span>
+                    <span style="color:var(--text-main);">{{ workflow.apply_reason }}</span>
+                </div>
+                {% endif %}
+                {% if workflow.change_description %}
+                <div class="flex gap-2">
+                    <span style="color:var(--text-dim);min-width:90px;">File Change Description：</span>
+                    <span style="color:var(--text-main);">{{ workflow.change_description }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ApprovalAttachment + One-clickPublish -->
+        <div class="glass-card rounded-xl p-6 mb-5">
+            <div class="flex items-start justify-between mb-4">
+                <h2 class="text-base font-bold" style="color:var(--accent);">
+                    <i class="fas fa-paperclip mr-2"></i>ApprovalAttachment ({{ workflow_files|length }})
+                </h2>
+                <!-- One-clickPublishButton（ObsoleteType Not Show） -->
+                {% if can_publish and workflow.apply_type != 'Obsolete' %}
+                <button onclick="publishWorkflow()" id="publishBtn"
+                    class="px-4 py-2 rounded-lg text-white text-sm font-semibold"
+                    style="background:rgba(34,197,94,0.8);border:1px solid rgba(34,197,94,0.4);">
+                    <i class="fas fa-upload mr-2"></i>Please Confirm Each File Department And File Type Now Confirm after，PointThisOne-clickPublish to File Library
+                </button>
+                {% elif is_published and workflow.apply_type != 'Obsolete' %}
+                <button disabled
+                    class="px-4 py-2 rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed"
+                    style="background:rgba(100,100,100,0.3);color:var(--text-dim);border:1px solid rgba(100,100,100,0.3);">
+                    <i class="fas fa-check mr-2"></i>Published
+                </button>
+                {% endif %}
+            </div>
+            <div class="space-y-2" id="wfFilesList">
+                {% for wf in workflow_files %}
+                {% set is_deleted = wf.is_published and wf.file_id is none %}
+                <div class="flex items-center justify-between p-3 rounded-lg" style="background:rgba(0,0,0,0.2);{% if is_deleted %} opacity:0.5;{% endif %};" id="wfFile_{{ wf.id }}">
+                    <div class="flex items-center gap-3">
+                        <i class="{{ wf.icon }} text-sm" style="color:var(--accent);"></i>
+                        <div>
+                            <div class="text-sm">
+                                {{ wf.original_name }}
+                                {% if is_deleted %}
+                                <span class="ml-2 px-2 py-0.5 rounded text-xs" style="background:rgba(239,68,68,0.15);color:#f87171;">
+                                    <i class="fas fa-ban mr-1"></i>Already Obsolete And Delete
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs" style="color:var(--text-dim);">
+                                {{ wf.size_fmt }} · {{ wf.department }}/{{ wf.file_type }}
+                                {% if wf.is_published and not is_deleted %}<span class="ml-2" style="color:#4ade80;">✓ Published</span>{% endif %}
+                                {% if is_deleted %}<span class="ml-2" style="color:#f87171;">This File Is Already Obsolete，No Download</span>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        {% if not is_deleted %}
+                        <a href="{{ url_for('download_workflow_file', workflow_id=workflow.id, file_id=wf.id) }}"
+                           class="px-3 py-1 rounded text-xs"
+                           style="background:rgba(0,212,255,0.1);color:var(--accent);">
+                            <i class="fas fa-download mr-1"></i>Download
+                        </a>
+                        {% else %}
+                        <span class="px-3 py-1 rounded text-xs cursor-default" style="background:rgba(148,163,184,0.1);color:var(--text-dim);">
+                            <i class="fas fa-ban mr-1"></i>No Download
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if not workflow_files %}
+            <div class="text-center py-6 text-sm" style="color:var(--text-dim);">No No Attachment</div>
+            {% endif %}
+        </div>
+
+        <!-- Approval RecordTimeLine -->
+        <div class="glass-card rounded-xl p-6 mb-5">
+            <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+                <i class="fas fa-history mr-2"></i>Approval Record
+                <span class="text-xs font-normal" style="color:var(--text-dim);">（Approval Result、Approval User、Approval Time、Note All Records）</span>
+            </h2>
+            {% if records %}
+            <div class="relative">
+                <div class="absolute left-5 top-0 bottom-0 w-0.5" style="background:rgba(0,212,255,0.15);"></div>
+                <div class="space-y-4">
+                    {% for r in records %}
+                    <div class="relative flex gap-4 pl-12">
+                        <div class="absolute left-3 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                             style="background:{% if r.action=='Initiated' %}var(--accent){% elif r.action=='Agree' %}#4ade80{% elif r.action=='Returned' %}#f87171{% elif r.action=='Cancel' %}#94a3b8{% else %}var(--accent){% endif %};color:#fff;top:2px;">
+                            <i class="fas {% if r.action=='Initiated' %}fa-play{% elif r.action=='Agree' %}fa-check{% elif r.action=='Returned' %}fa-undo{% elif r.action=='Cancel' %}fa-ban{% else %}fa-info{% endif %} text-white text-xs"></i>
+                        </div>
+                        <div class="flex-1 pb-4 {% if not loop.last %}border-b{% endif %}" style="border-color:rgba(255,255,255,0.05);">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-sm">{{ r.approver_name }}</span>
+                                <span class="text-xs px-2 py-0.5 rounded-full"
+                                      style="background:{% if r.action=='Initiated' %}rgba(0,212,255,0.15);color:var(--accent){% elif r.action=='Agree' %}rgba(34,197,94,0.15);color:#4ade80{% elif r.action=='Returned' %}rgba(239,68,68,0.15);color:#f87171{% elif r.action=='Cancel' %}rgba(148,163,184,0.15);color:#94a3b8{% else %}rgba(148,163,184,0.15);color:#94a3b8{% endif %};">
+                                    {{ r.node_name }} · {{ r.action }}
+                                </span>
+                            </div>
+                            {% if r.comment %}
+                            <div class="text-sm p-3 rounded-lg mt-2" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                                <i class="fas fa-comment-dots mr-1" style="color:var(--accent);"></i>
+                                {{ r.comment }}
+                            </div>
+                            {% endif %}
+                            <div class="text-xs mt-1" style="color:var(--text-dim);">{{ r.created_at }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-sm" style="color:var(--text-dim);">No No Approval Record</div>
+            {% endif %}
+        </div>
+
+        <!-- Workflow NodeStatus -->
+        <div class="glass-card rounded-xl p-6 mb-5">
+            <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+                <i class="fas fa-sitemap mr-2"></i>Approval Workflow Status
+            </h2>
+            <div class="space-y-1">
+                {% for node in workflow_nodes %}
+                <div class="wf-node-item {% if node.node_status == 'current' %}current{% elif node.node_status == 'done' %}done{% endif %}">
+                    <div class="node-icon" style="background:{% if node.node_status == 'done' %}#4ade80{% elif node.node_status == 'current' %}var(--accent){% elif node.node_status == 'rejected' %}#f87171{% else %}#334155{% endif %};color:#fff;">
+                        {% if node.node_status == 'done' %}<i class="fas fa-check text-white text-xs"></i>
+                        {% elif node.node_status == 'current' %}<i class="fas fa-arrow-right text-white text-xs"></i>
+                        {% elif node.node_status == 'rejected' %}<i class="fas fa-times text-white text-xs"></i>
+                        {% else %}{{ loop.index }}{% endif %}
+                    </div>
+                    <div class="node-info">
+                        <div class="node-name">{{ node.node_name }}</div>
+                        <div class="node-approvers">
+                            {{ node.approver_names or 'Not specified' }}
+                            {% if node.waiting_names %}
+                            <span class="ml-1" style="color:#fbbf24;">({{ node.waiting_names }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="node-status {% if node.node_status == 'done' %}node-done{% elif node.node_status == 'current' %}node-current{% elif node.node_status == 'rejected' %}node-rejected{% else %}node-pending{% endif %}">
+                        {% if node.node_status == 'done' %}✓ Approved
+                        {% elif node.node_status == 'current' %}→ Current
+                        {% elif node.node_status == 'rejected' %}✕ Returned
+                        {% else %}○ Pending Approval{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right panel -->
+    <div class="lg:col-span-1">
+        <div class="glass-card rounded-xl p-5 sticky top-24">
+
+            <!-- Approval UserOperationArea -->
+            {% if can_approve and not has_approved %}
+            <h3 class="text-base font-bold mb-4" style="color:var(--accent);">
+                <i class="fas fa-hand-pointer mr-2"></i>CurrentApproval
+            </h3>
+            <p class="text-xs mb-3" style="color:var(--text-dim);">
+                Current Node：<strong style="color:var(--accent);">{{ workflow.current_node }}</strong>
+            </p>
+            <div class="mb-3">
+                <label class="block text-xs font-medium mb-2" style="color:var(--text-dim);">
+                    <i class="fas fa-comment mr-1"></i>Approval Note
+                    <span class="float-right" style="color:var(--text-dim);">Max1000Character</span>
+                </label>
+                <textarea id="wfComment" rows="3" maxlength="1000"
+                    class="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                    style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;outline:none;"
+                    placeholder="Please Input Approval Note（Optional，Max1000Character）"></textarea>
+                <div class="text-right text-xs mt-1" style="color:var(--text-dim);">
+                    <span id="charCount">0</span>/1000
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="submitApproval('Approved')"
+                    class="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold"
+                    style="background:rgba(34,197,94,0.8);border:1px solid rgba(34,197,94,0.4);">
+                    <i class="fas fa-check mr-1"></i>Agree
+                </button>
+                <button onclick="submitApproval('Returned')"
+                    class="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold"
+                    style="background:rgba(239,68,68,0.8);border:1px solid rgba(239,68,68,0.4);">
+                    <i class="fas fa-undo mr-1"></i>Returned
+                </button>
+            </div>
+
+            {% elif can_approve and has_approved %}
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle text-3xl mb-2" style="color:#4ade80;"></i>
+                <div class="text-sm font-medium" style="color:#4ade80;">You Completed This Node Approval</div>
+                <div class="text-xs mt-1" style="color:var(--text-dim);">Waiting For Other Approvers...</div>
+            </div>
+
+            <!-- Approved -->
+            {% elif workflow.status == 'Approved' %}
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle text-4xl mb-3" style="color:#4ade80;"></i>
+                <div class="text-base font-bold" style="color:#4ade80;">Approved</div>
+                <div class="text-xs mt-2" style="color:var(--text-dim);">Node Approved，Workflow Terminated</div>
+                {% if can_publish and workflow.apply_type != 'Obsolete' %}
+                <div class="text-xs mt-2" style="color:#4ade80;">Can Right Click Attachment To Publish</div>
+                {% elif is_published and workflow.apply_type != 'Obsolete' %}
+                <div class="text-xs mt-2" style="color:#4ade80;">Attachment Published to File Library</div>
+                {% endif %}
+            </div>
+
+            <!-- Returned -->
+            {% elif workflow.status == 'Returned' %}
+            <div class="text-center py-6">
+                <i class="fas fa-ban text-4xl mb-3" style="color:#f87171;"></i>
+                <div class="text-base font-bold" style="color:#f87171;">Returned</div>
+                <div class="text-xs mt-2" style="color:var(--text-dim);">Workflow Terminated，Such asNeed toPlease Re-New Initiated Approval</div>
+            </div>
+
+            <!-- Already Cancelled -->
+            {% elif workflow.status == 'Already Cancelled' %}
+            <div class="text-center py-6">
+                <i class="fas fa-ban text-4xl mb-3" style="color:#94a3b8;"></i>
+                <div class="text-base font-bold" style="color:#94a3b8;">Already Cancelled</div>
+            </div>
+
+            <!-- EtcPendingIn （Non-Approval User） -->
+            {% else %}
+            <div class="text-center py-6">
+                <i class="fas fa-hourglass-half text-3xl mb-3" style="color:var(--accent);"></i>
+                <div class="text-sm" style="color:var(--text-dim);">Waiting For Approval...</div>
+                <div class="text-xs mt-2" style="color:var(--text-dim);">Current Node：{{ workflow.current_node }}</div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- AddAttachmentPopup（Returned afterInitiatorOperation） -->
+<div id="addFileModal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.6);">
+    <div class="rounded-xl p-6 max-w-md w-full mx-4" style="background:#1a1f35;border:1px solid rgba(0,212,255,0.2);">
+        <h3 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-plus-circle mr-2"></i>AddAttachment
+        </h3>
+        <div class="mb-3">
+            <label class="text-xs mb-1 block" style="color:var(--text-dim);">Select File *</label>
+            <input type="file" id="addWfFile" class="w-full text-sm rounded-lg px-3 py-2"
+                   style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+                <label class="text-xs mb-1 block" style="color:var(--text-dim);">Department *</label>
+                <select id="addFileDept" class="w-full px-3 py-2 rounded-lg text-sm"
+                        style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+                    <option value="">Please select</option>
+                    {% for d in departments %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-xs mb-1 block" style="color:var(--text-dim);">File Type *</label>
+                <select id="addFileType" class="w-full px-3 py-2 rounded-lg text-sm"
+                        style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+                    <option value="">Please select</option>
+                    {% for t in file_types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="doAddFile()" class="flex-1 py-2 rounded-lg text-white text-sm font-semibold"
+                    style="background:rgba(0,212,255,0.8);">
+                <i class="fas fa-upload mr-1"></i>Upload
+            </button>
+            <button onclick="document.getElementById('addFileModal').classList.add('hidden')"
+                    class="flex-1 py-2 rounded-lg text-sm" style="background:rgba(100,100,100,0.2);color:var(--text-dim);">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ====== One-clickPublishFeature ======
+async function publishWorkflow() {
+    if (!confirm('ConfirmNeed toWillThisWorkflowIn AttachmentPublish to File Library?？\nThisOperationIrreversible。')) return;
+    
+    const btn = document.getElementById('publishBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>PublishIn ...';
+    
+    const resp = await fetch('/workflow/{{ workflow.id }}/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    });
+    const data = await resp.json();
+    
+    if (data.success) {
+        btn.innerHTML = '<i class="fas fa-check mr-2"></i>' + data.message;
+        btn.style.background = 'rgba(34,197,94,0.5)';
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        // ShowPrompt
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload mr-2"></i>Please ConfirmEachFileDepartmentAndFile TypeNowConfirm after，PointThisOne-clickPublish to File Library';
+        alert(data.message);
+    }
+}
+
+// ====== Task3: Agree/Returned（100CharacterNote） ======
+document.getElementById('wfComment')?.addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+});
+
+async function submitApproval(action) {
+    const comment = document.getElementById('wfComment').value.trim();
+    if (comment.length > 1000) { alert('NoteCannotExceeds1000Character'); return; }
+    if (!confirm('Confirm to "' + action + '" this approval workflow?')) return;
+    const resp = await fetch('/workflow/{{ workflow.id }}/process', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action, comment })
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) location.reload();
+}
+
+
+// ====== Task4: InitiatorCancelApproval ======
+
+// ====== Task4: RemoveAttachment ======
+async function removeWfFile(fileId) {
+    if (!confirm('ConfirmNeed toDeleteThisAttachment?？')) return;
+    const resp = await fetch('/workflow/{{ workflow.id }}/remove-file/' + fileId, { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+        document.getElementById('wfFile_' + fileId)?.remove();
+    } else {
+        alert(data.message);
+    }
+}
+
+// ====== Task4: ShowAddAttachmentPopup ======
+function showAddFileModal() {
+    document.getElementById('addFileModal').classList.remove('hidden');
+}
+
+async function doAddFile() {
+    const fileInput = document.getElementById('addWfFile');
+    const dept = document.getElementById('addFileDept').value;
+    const ftype = document.getElementById('addFileType').value;
+    if (!fileInput.files[0]) { alert('Please select File'); return; }
+    if (!dept || !ftype) { alert('Please select Department And File Type'); return; }
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('department', dept);
+    formData.append('file_type', ftype);
+    const resp = await fetch('/workflow/{{ workflow.id }}/add-file', { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.success) {
+        location.reload();
+    } else {
+        alert(data.message);
+    }
+}
+</script>
+{% endblock %}

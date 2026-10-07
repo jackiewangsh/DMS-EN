@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title or 'MainPage'}}{% endblock %}
+
+{% block content %}
+<!-- SearchBox area -->
+<div class="glass-card rounded-xl p-4 mb-6" style="border-color:rgba(0,212,255,0.15);">
+    <div class="flex items-center gap-3 mb-2">
+        <i class="fas fa-search" style="color:var(--accent);"></i>
+        <span class="text-xs font-medium" style="color:var(--text-dim);">Quick Search Published File，Max Show the First200 Results</span>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="relative flex-1">
+            <input type="text" id="searchInput" value=""
+                   placeholder="Input File name..."
+                   class="pl-9 pr-4 py-2 rounded-lg text-sm w-full"
+                   style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:var(--text);outline:none;"
+                   >
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--text-dim);"></i>
+        </div>
+        <label class="flex items-center gap-1.5 cursor-pointer select-none whitespace-nowrap px-3 py-1.5 rounded-lg text-xs" style="background:rgba(0,0,0,0.2);border:1px solid rgba(0,212,255,0.15);color:var(--text-dim);">
+            <input type="checkbox" id="fulltextToggle" class="w-3.5 h-3.5 rounded accent-cyan-400" checked>
+            <i class="fas fa-file-lines"></i>
+            <span>Search File Content</span>
+        </label>
+    </div>
+    <div id="searchResultBox" class="hidden mt-2 rounded-lg overflow-hidden"
+         style="background:rgba(0,0,0,0.4);border:1px solid rgba(0,212,255,0.2);">
+        <div id="searchResultList"></div>
+        <div id="searchResultEmpty" class="hidden text-center py-8" style="color:var(--text-dim);">
+            <i class="fas fa-search text-2xl mb-2 opacity-40"></i>
+            <div class="text-sm">No matches foundFile</div>
+        </div>
+        <div id="searchResultHint" class="text-center py-8" style="color:var(--text-dim);">
+            <i class="fas fa-keyboard text-2xl mb-2 opacity-40"></i>
+            <div class="text-sm">Input File nameSearch，Check「Search File Content」Searchable Now Text</div>
+        </div>
+    </div>
+</div>
+
+<!-- FeatureCard area -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+    <!-- Welcome card -->
+    <div class="glass-card rounded-xl p-5">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
+                 style="background:linear-gradient(135deg,var(--accent2),var(--accent));color:#000;">
+                {{ session.username[0].upper() }}
+            </div>
+            <div>
+                <div class="font-bold text-base"> Hello {{ session.username }}</div>
+                <div class="text-sm" style="color:var(--text-dim);">Welcome To Use This System</div>
+                <div class="text-xs mt-1 px-2 py-0.5 rounded-full inline-block"
+                     style="background:rgba(0,212,255,0.15);color:var(--accent);">
+                    {{ session.role }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending ApprovalCard -->
+    <a href="{{ url_for('approvals') }}" class="glass-card rounded-xl p-5 hover:scale-[1.02] transition-transform cursor-pointer block">
+        <div class="flex items-center justify-between">
+            <div>
+                <div class="text-xs font-medium mb-2" style="color:var(--text-dim);">
+                    <i class="fas fa-clock mr-1"></i>Pending for Your Approval
+                </div>
+                <div class="text-4xl font-bold font-tech" style="color:var(--accent);">{{ pending_count }}</div>
+                <div class="text-xs mt-1" style="color:var(--text-dim);"> Files Pending Approval</div>
+            </div>
+            <div class="w-14 h-14 rounded-xl flex items-center justify-center" style="background:rgba(0,212,255,0.1);">
+                <i class="fas fa-tasks text-2xl" style="color:var(--accent);"></i>
+            </div>
+        </div>
+    </a>
+
+    <!-- Notice card -->
+    <div class="glass-card rounded-xl p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="text-xs font-medium" style="color:var(--text-dim);">
+                <i class="fas fa-bullhorn mr-1"></i>System Notice
+            </div>
+        </div>
+        {% if announcement %}
+        <div class="text-sm leading-relaxed" style="color:var(--text-dim);">
+            {{ announcement.content[:80] }}{% if announcement.content|length > 80 %}...{% endif %}
+        </div>
+        <div class="text-xs mt-2" style="color:rgba(100,100,100,0.6);">{{ announcement.created_at[:10] }}</div>
+        {% else %}
+        <div class="text-sm italic" style="color:var(--text-dim);">No No Notice</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Notice bar（HaveUserVisible，Admin/Doc control canEdit）- No. One itemsWindow，Addmt-6 -->
+<div class="glass-card rounded-xl p-5 mt-6">
+    <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-bold" style="color:var(--accent);">
+            <i class="fas fa-edit mr-2"></i>Notice Bar
+        </div>
+        <div class="flex gap-2">
+        {% if session.role in ['System Admin', 'Quality Specialist'] %}
+            <button onclick="startEditRichtext()" id="editRichtextBtn"
+                    class="px-3 py-1 rounded text-xs font-medium"
+                    style="background:rgba(0,212,255,0.2);color:var(--accent);border:none;cursor:pointer;">
+                <i class="fas fa-edit mr-1"></i>Edit
+            </button>
+            <button onclick="saveRichtext()" id="saveRichtextBtn"
+                    class="px-3 py-1 rounded text-xs font-medium hidden"
+                    style="background:rgba(34,197,94,0.2);color:#4ade80;border:none;cursor:pointer;">
+                <i class="fas fa-save mr-1"></i>Save
+            </button>
+            <button onclick="cancelEditRichtext()" id="cancelRichtextBtn"
+                    class="px-3 py-1 rounded text-xs hidden"
+                    style="background:rgba(148,163,184,0.2);color:#94a3b8;border:none;cursor:pointer;">
+                Cancel
+            </button>
+        {% endif %}
+        </div>
+    </div>
+    <div id="richtextView" class="text-sm leading-relaxed" style="color:var(--text-dim);min-height:60px;">
+        {% if dashboard_richtext %}{{ dashboard_richtext | safe }}{% else %}<span style="opacity:0.4;">No No Content，Click Edit Button To Add</span>{% endif %}
+    </div>
+    <div id="richtextEditor" class="hidden">
+        <textarea id="richtextArea" maxlength="10000" rows="6"
+                  class="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.3);color:var(--text);resize:vertical;"
+                  placeholder="Main inputPage Content，Support：★Bold★  ☆Italic☆  ━━Wrap"></textarea>
+        <div class="flex justify-between items-center mt-1">
+            <span style="color:var(--text-dim);font-size:11px;">★Bold★  ☆Italic☆  ━━Wrap</span>
+            <span style="color:var(--text-dim);font-size:11px;"><span id="richtextLen">0</span>/10000</span>
+        </div>
+    </div>
+</div>
+
+<!-- Recent New Publish Files - No. Two itemsWindow，Addmt-6AndKeep spacing above window -->
+<div class="glass-card rounded-xl overflow-hidden mt-6">
+    <div class="flex items-center justify-between px-5 py-4" style="border-color:rgba(0,212,255,0.15);">
+        <div class="text-sm font-bold" style="color:var(--accent);">
+            <i class="fas fa-clock mr-2"></i>Recent New Publish Files
+        </div>
+        <a href="{{ url_for('files') }}" class="text-xs hover:opacity-80 transition-opacity" style="color:var(--text-dim);">
+            View All <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+
+    {% if recent_files %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="dashboardTable">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2);color:var(--text-dim);">
+                    <th class="px-5 py-3 font-medium resizable" style="min-width:400px;position:relative;"><i class="fas fa-file mr-1"></i>File name</th>
+                    <th class="px-4 py-3 font-medium resizable" style="position:relative;"><i class="fas fa-building mr-1"></i>Department</th>
+                    <th class="px-4 py-3 font-medium resizable" style="position:relative;"><i class="fas fa-tag mr-1"></i>Type</th>
+                    <th class="px-4 py-3 font-medium resizable" style="position:relative;"><i class="fas fa-hard-drive mr-1"></i>Size</th>
+                    <th class="px-4 py-3 font-medium resizable" style="position:relative;"><i class="fas fa-user mr-1"></i>Upload User</th>
+                    <th class="px-4 py-3 font-medium resizable" style="position:relative;"><i class="fas fa-calendar mr-1"></i>Time</th>
+                    <th class="px-4 py-3 font-medium" style="width:90px;"><i class="fas fa-cog mr-1"></i>Operation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in recent_files %}
+                <tr class="border-t hover:opacity-80 transition-opacity" style="border-color:rgba(255,255,255,0.05);">
+                    <td class="px-5 py-3">
+                        <div class="flex items-center gap-2">
+                            <i class="{{ f.icon }} text-sm" style="color:var(--accent);"></i>
+                            <a href="/download/{{ f.id }}?attach=1" class="truncate max-w-xs hover:underline" title="{{ f.original_name }}（Click To Download）">{{ f.original_name }}</a>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3" style="color:var(--text-dim);">{{ f.department }}</td>
+                    <td class="px-4 py-3" style="color:var(--text-dim);">{{ f.file_type }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ f.size_fmt }}</td>
+                    <td class="px-4 py-3" style="color:var(--text-dim);">{{ f.uploader_name }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ f.created_at[:10] }}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-2">
+                            <a href="{{ url_for('file_preview', file_id=f.id) }}" target="_blank"
+                               class="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
+                               style="background:rgba(0,212,255,0.1);color:var(--accent);" title="PreviewPDFFormat，Download Original textFor">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="/download/{{ f.id }}?attach=1"
+                               class="text-xs px-2 py-1 rounded hover:opacity-80 transition-opacity"
+                               style="background:rgba(34,197,94,0.1);color:#4ade80;" title="Download">
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-16" style="color:var(--text-dim);">
+        <i class="fas fa-folder-open text-4xl mb-3 opacity-30"></i>
+        <div class="text-sm">No No Published File</div>
+    </div>
+    {% endif %}
+</div>
+
+
+<script>
+// ========== MainPageSearchFeature ==========
+(function() {
+    var searchTimer = null;
+    var input = document.getElementById('searchInput');
+    var resultBox = document.getElementById('searchResultBox');
+    var resultList = document.getElementById('searchResultList');
+    var emptyHint = document.getElementById('searchResultEmpty');
+    var hintHint = document.getElementById('searchResultHint');
+    if (!input) return;
+
+    // Not againAutoHideSearch Results
+    // function hideResults() {
+    //     resultBox.classList.add('hidden');
+    //     resultList.innerHTML = '';
+    //     emptyHint.classList.add('hidden');
+    //     hintHint.classList.add('hidden');
+    // }
+
+    // StoredHaveSearch Results，Use"Show All"
+    var allSearchResults = [];
+    var showAll = false;
+
+    function renderResults() {
+        var list = showAll ? allSearchResults : allSearchResults.slice(0, 20);
+        resultList.innerHTML = '';
+        list.forEach(function(f) {
+            var div = document.createElement('div');
+            div.className = 'px-4 py-3 flex items-center gap-3 border-b cursor-pointer hover:bg-white hover:bg-opacity-5 transition-colors';
+            div.style.cssText = 'border-color:rgba(0,212,255,0.1);';
+            var tagHtml = '';
+            if (f.match_type === 'content') {
+                tagHtml = '<span class="inline-block text-xs px-1.5 py-0.5 rounded ml-2" style="background:rgba(251,191,36,0.15);color:#fbbf24;font-size:10px;">Content Match</span>';
+            }
+            var snippetHtml = '';
+            if (f.content_snippet) {
+                snippetHtml = '<div class="text-xs mt-0.5 truncate" style="color:var(--text-dim);max-width:500px;opacity:0.7;">' + f.content_snippet + '</div>';
+            }
+            div.innerHTML = '<i class="' + (f.icon || 'fas fa-file') + '" style="color:var(--accent);"></i><div class="flex-1 min-w-0" style="min-width:400px;"><div class="text-sm truncate"><a href="/download/' + f.id + '?attach=1" class="hover:underline" title="Click To Download">' + f.original_name + '</a>' + tagHtml + '</div><div class="text-xs" style="color:var(--text-dim);">' + f.department + ' · ' + f.file_type + '</div>' + snippetHtml + '</div><a href="/preview/' + f.id + '" target="_blank" class="text-xs px-2 py-1 rounded" style="background:rgba(0,212,255,0.1);color:var(--accent);flex-shrink:0;" title="PreviewPDFFormat，Download Original textFor">View</a><a href="/download/' + f.id + '?attach=1" class="text-xs px-2 py-1 rounded" style="background:rgba(34,197,94,0.1);color:#4ade80;flex-shrink:0;" title="Download"><i class="fas fa-download"></i></a>';
+            div.querySelector('a').onclick = function(e) { e.stopPropagation(); };
+            resultList.appendChild(div);
+        });
+        if (allSearchResults.length > 20 && !showAll) {
+            var more = document.createElement('div');
+            more.className = 'text-center py-3';
+            more.innerHTML = '<button onclick="showAllResults()" class="px-4 py-2 rounded-lg text-xs font-medium" style="background:rgba(0,212,255,0.2);color:var(--accent);border:none;cursor:pointer;">Show All Results（Total ' + allSearchResults.length + ' items）</button>';
+            resultList.appendChild(more);
+        }
+    }
+
+    window.showAllResults = function() {
+        showAll = true;
+        renderResults();
+    };
+
+    input.addEventListener('input', function() {
+        var q = this.value.trim();
+        clearTimeout(searchTimer);
+        if (!q) {
+            resultBox.classList.add('hidden');
+            resultList.innerHTML = '';
+            allSearchResults = [];
+            showAll = false;
+            return;
+        }
+        hintHint.classList.add('hidden');
+        resultList.innerHTML = '<div class="text-center py-4" style="color:var(--text-dim);"><i class="fas fa-spinner fa-spin"></i> Search In ...</div>';
+        resultBox.classList.remove('hidden');
+        searchTimer = setTimeout(function() {
+            var ft = document.getElementById('fulltextToggle').checked ? '&fulltext=1' : '';
+            fetch('/api/files/search?q=' + encodeURIComponent(q) + ft)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    resultList.innerHTML = '';
+                    if (!data.results || data.results.length === 0) {
+                        emptyHint.classList.remove('hidden');
+                        allSearchResults = [];
+                        return;
+                    }
+                    emptyHint.classList.add('hidden');
+                    allSearchResults = data.results;
+                    showAll = false;
+                    renderResults();
+                })
+                .catch(function() {
+                    resultList.innerHTML = '<div class="text-center py-4" style="color:#f87171;">Search Failed</div>';
+                });
+        }, 300);
+    });
+
+    // Remove blur  whenAutoHide，KeepSearch ResultsShow
+    // input.addEventListener('blur', function() {
+    //     setTimeout(function() { hideResults(); }, 200);
+    // });
+    input.addEventListener('focus', function() {
+        if (this.value.trim()) {
+            resultBox.classList.remove('hidden');
+        } else {
+            hintHint.classList.remove('hidden');
+        }
+    });
+})();
+
+// ========== Rich textThisEdit ==========
+(function() {
+    var viewEl = document.getElementById('richtextView');
+    var editorEl = document.getElementById('richtextEditor');
+    var areaEl = document.getElementById('richtextArea');
+    var editBtn = document.getElementById('editRichtextBtn');
+    var saveBtn = document.getElementById('saveRichtextBtn');
+    var cancelBtn = document.getElementById('cancelRichtextBtn');
+    var lenEl = document.getElementById('richtextLen');
+    if (!viewEl) return;
+    window.startEditRichtext = function() {
+        areaEl.value = plainToHtmlInverse(viewEl.innerHTML);
+        editorEl.classList.remove('hidden');
+        viewEl.classList.add('hidden');
+        editBtn.classList.add('hidden');
+        saveBtn.classList.remove('hidden');
+        cancelBtn.classList.remove('hidden');
+        areaEl.focus();
+        lenEl.textContent = areaEl.value.length;
+    };
+    window.cancelEditRichtext = function() {
+        editorEl.classList.add('hidden');
+        viewEl.classList.remove('hidden');
+        editBtn.classList.remove('hidden');
+        saveBtn.classList.add('hidden');
+        cancelBtn.classList.add('hidden');
+    };
+    window.saveRichtext = function() {
+        var content = areaEl.value;
+        fetch('/api/richtext', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: content})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                viewEl.innerHTML = content ? plainToHtml(content) : '<span style="opacity:0.4;">No No Content，Click Edit Button To Add</span>';
+                cancelEditRichtext();
+            } else {
+                alert(data.message || 'SaveFailed');
+            }
+        })
+        .catch(function() { alert('SaveFailed'); });
+    };
+    if (areaEl) {
+        areaEl.addEventListener('input', function() {
+            lenEl.textContent = this.value.length;
+        });
+    }
+    window.plainToHtml = function(text) {
+        if (!text) return '';
+        return text.replace(/★/g, '<b>').replace(/★/g, '</b>')
+                   .replace(/☆/g, '<i>').replace(/☆/g, '</i>')
+                   .replace(/━━/g, '<br>');
+    };
+    window.plainToHtmlInverse = function(html) {
+        if (!html) return '';
+        return html.replace(/<b>/g, '★').replace(/<\/b>/g, '★')
+                   .replace(/<i>/g, '☆').replace(/<\/i>/g, '☆')
+                   .replace(/<br\s*\/?>/gi, '━━')
+                   .replace(/<[^>]+>/g, '');
+    };
+    // PageWhen loading：Such asIf viewEl Pure textThisMark（Include★☆━━），ConvertFor HTML
+    if (viewEl && viewEl.textContent && (viewEl.textContent.includes('★') || viewEl.textContent.includes('☆') || viewEl.textContent.includes('━━'))) {
+        viewEl.innerHTML = plainToHtml(viewEl.textContent);
+    }
+})();
+
+// ===== Column width drag =====
+function initColResize() {
+    var table = document.getElementById('dashboardTable');
+    if (!table) return;
+    var ths = table.querySelectorAll('thead th.resizable');
+    ths.forEach(function(th) {
+        var resizer = document.createElement('div');
+        resizer.style.cssText = 'position:absolute;right:0;top:0;height:100%;width:8px;cursor:col-resize;z-index:5;background:linear-gradient(90deg,transparent,rgba(0,212,255,0.3),transparent);';
+        resizer.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var startX = e.pageX;
+            var startW = th.offsetWidth;
+            function onMove(ev) {
+                var diff = ev.pageX - startX;
+                var newW = Math.max(60, startW + diff);
+                th.style.width = newW + 'px';
+            }
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        th.style.position = 'relative';
+        th.appendChild(resizer);
+    });
+}
+document.addEventListener('DOMContentLoaded', initColResize);
+</script>
+
+{% endblock %}
+
+
+

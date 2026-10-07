@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+/* UploadArea dropdown style */
+#uploadForm select {
+    background: rgba(0,0,0,0.4);
+    color: #e2e8f0;
+    border: 1px solid rgba(0,212,255,0.3);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    min-width: 140px;
+    cursor: pointer;
+}
+#uploadForm select option {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 8px;
+}
+#uploadForm select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(0,212,255,0.2);
+}
+</style>
+<div class="main">
+  <div class="page-header">
+    <h1><i class="fas fa-trash-alt"></i> Obsoleted Files Management</h1>
+    <p class="page-desc">Manage obsoleted files. Obsoleted files will not appear in the regular file list.</p>
+  </div>
+  
+  <!-- Batch DeleteButton（Admin/Doc control visible） -->
+  {% if session.role in ['System Admin', 'Quality Specialist'] %}
+  <div class="stats" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);padding:10px 16px;border-radius:8px;margin-bottom:16px;">
+    <button onclick="batchDeleteObsolete()" class="btn-delete" style="padding:6px 16px;font-size:13px;">
+      <i class="fas fa-trash-alt mr-1"></i>Batch Delete
+    </button>
+    <span id="obsoleteSelCount" style="margin-left:12px;font-size:12px;color:var(--dim);"></span>
+  </div>
+  {% endif %}
+  
+  <!-- UploadArea -->
+  <div class="upload-section">
+    <div class="upload-header">
+      <i class="fas fa-upload"></i> Manually Upload Obsoleted Files
+    </div>
+    <form id="uploadForm" class="upload-form">
+      <div class="form-row">
+        <select id="deptSelect" required>
+          <option value="">Select Department</option>
+          {% for dept in sidebar.departments %}
+          <option value="{{ dept.name }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+        <select id="typeSelect" required>
+          <option value="">Select Type</option>
+        </select>
+        <input type="file" id="fileInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.7z,.rar">
+        <button type="submit" class="btn-upload">
+          <i class="fas fa-upload"></i> Upload
+        </button>
+      </div>
+      <div id="uploadMsg" class="upload-msg"></div>
+    </form>
+  </div>
+  
+  <!-- File List -->
+  <div class="file-section">
+    <div class="file-header">
+      <form method="GET" class="search-form">
+        <input type="text" id="searchInput" name="q" value="{{ search_query }}" placeholder="Search by filename, department, type..." oninput="filterObsoleteTable(this.value)">
+        <button type="submit"><i class="fas fa-search"></i></button>
+        {% if search_query %}<a href="/obsolete" class="btn-clear">Clear</a>{% endif %}
+      </form>
+      <span class="file-count">Total {{ total }} records, Page {{ page }}/{{ total_pages }}</span>
+    </div>
+    
+    {% if total_pages > 1 %}
+    <div class="flex items-center gap-1 mb-3">
+        {% if page > 1 %}
+        <a href="{{ url_for('obsolete_files_page', q=search_query, page=page-1) }}" class="px-3 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">Previous</a>
+        {% endif %}
+        {% set start_page = [1, page - 2]|max %}
+        {% set end_page = [total_pages, page + 2]|min %}
+        {% for p in range(start_page, end_page + 1) %}
+        <a href="{{ url_for('obsolete_files_page', q=search_query, page=p) }}" class="px-3 py-1 rounded text-xs {% if p == page %}text-black{% endif %}" style="{% if p == page %}background:var(--accent);color:#000;{% else %}background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);{% endif %}">{{ p }}</a>
+        {% endfor %}
+        {% if page < total_pages %}
+        <a href="{{ url_for('obsolete_files_page', q=search_query, page=page+1) }}" class="px-3 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% if files_list %}
+    <table class="file-table" id="obsoleteTable">
+      <thead>
+        <tr>
+          <th style="width:32px;"><input type="checkbox" id="selectAllObs" onchange="toggleAllObs(this)" class="rounded" style="accent-color:var(--accent);"></th>
+          <th class="resizable" style="min-width:300px;position:relative;">Filename</th>
+          <th class="resizable" style="position:relative;">Department</th>
+          <th class="resizable" style="position:relative;">Type</th>
+          <th class="resizable" style="position:relative;">Size</th>
+          <th class="resizable" style="position:relative;">Uploaded By</th>
+          <th class="resizable" style="position:relative;">Obsoleted At</th>
+          <th class="resizable" style="position:relative;">Obsolete Reason</th>
+          <th class="resizable" style="position:relative;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in files_list %}
+        <tr>
+          <td><input type="checkbox" class="obsolete-check rounded" value="{{ f.id }}" style="accent-color:var(--accent);"></td>
+          <td>
+            <div class="file-name">
+              <i class="{{ f.icon }}"></i>
+              <a href="/download/{{ f.id }}?attach=1" class="hover:underline" title="{{ f.original_name }} - Click to download">{{ f.original_name }}</a>
+            </div>
+          </td>
+          <td><span class="badge">{{ f.department }}</span></td>
+          <td>{{ f.file_type }}</td>
+          <td>{{ f.size_fmt }}</td>
+          <td>{{ f.uploader_name }}</td>
+          <td>{{ (f.updated_at or f.created_at)[:16] }}</td>
+          <td class="reason">{{ f.obsolete_reason or '-' }}</td>
+          <td>
+            <a href="/preview/{{ f.id }}" target="_blank" class="btn-view" title="Preview in PDF format, includes download for original format">View</a>
+            <a href="/download/{{ f.id }}?attach=1" class="btn-download">Download</a>
+            {% if session.role in ['System Admin', 'Quality Specialist'] %}
+            <button onclick="deleteObsolete('{{ f.id }}', '{{ f.original_name }}')" class="btn-delete">Delete</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <i class="fas fa-trash-alt"></i>
+      <p>{% if search_query %}No matching obsoleted files found{% else %}No obsoleted files{% endif %}</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.upload-section {
+  background: rgba(255,71,87,0.05);
+  border: 1px solid rgba(255,71,87,0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.upload-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+.upload-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex: 1;
+}
+.form-row select, .form-row input[type="file"] {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--text);
+}
+.form-row select { min-width: 140px; }
+.btn-upload {
+  padding: 8px 20px;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.upload-msg { font-size: 12px; margin-top: 8px; }
+.file-section { background: var(--card); border-radius: 8px; padding: 16px; }
+.file-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.search-form { display: flex; gap: 8px; }
+.search-form input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); width: 250px; }
+.file-count { font-size: 12px; color: var(--dim); }
+.file-table { width: 100%; border-collapse: collapse; }
+.file-table th, .file-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+.file-table th { font-size: 12px; color: var(--dim); }
+.file-name { display: flex; align-items: center; gap: 8px; }
+.file-name i { color: var(--accent); }
+.badge { padding: 2px 8px; border-radius: 4px; background: rgba(0,212,255,0.1); font-size: 12px; }
+.reason { font-size: 12px; color: #ff6b6b; }
+.btn-view, .btn-download, .btn-delete { padding: 4px 10px; border-radius: 4px; font-size: 12px; text-decoration: none; margin-right: 4px; border: none; cursor: pointer; }
+.btn-view { background: rgba(0,212,255,0.1); color: var(--accent); }
+.btn-download { background: rgba(46,213,115,0.1); color: #2ed573; }
+.btn-delete { background: rgba(239,68,68,0.1); color: #f87171; }
+.btn-delete:hover { background: rgba(239,68,68,0.2); }
+.empty-state { text-align: center; padding: 40px; color: var(--dim); }
+.empty-state i { font-size: 48px; margin-bottom: 10px; }
+</style>
+
+<script>
+// DepartmentFile TypeMap
+var deptFileTypes = {{ sidebar.dept_file_types | tojson | safe }};
+
+// ===== Shift Multi-select =====
+var lastCheckedObs = -1;
+function initShiftSelectObs() {
+    console.log('initShiftSelectObs called');
+    var checkboxes = document.querySelectorAll('.obsolete-check');
+    console.log('Found checkboxes:', checkboxes.length);
+    checkboxes.forEach(function(cb, idx) {
+        cb.addEventListener('click', function(e) {
+            console.log('Checkbox', idx, 'clicked, shiftKey=', e.shiftKey, 'checked=', this.checked);
+            if (e.shiftKey && lastCheckedObs >= 0) {
+                var start = Math.min(lastCheckedObs, idx);
+                var end = Math.max(lastCheckedObs, idx);
+                var checked = checkboxes[lastCheckedObs].checked;
+                console.log('Shift range:', start, '-', end, 'set to', checked);
+                for (var i = start; i <= end; i++) {
+                    checkboxes[i].checked = checked;
+                }
+            }
+            lastCheckedObs = idx;
+            console.log('Updated lastCheckedObs to', idx);
+        });
+    });
+    console.log('Shift listeners attached');
+}
+
+function toggleAllObs(cb) {
+    // OnlySelectedCurrently visible（UnfilteredHide）Row
+    var visible = document.querySelectorAll('#obsoleteTable tbody tr:not([style*="display: none"])');
+    visible.forEach(function(el) {
+        var chk = el.querySelector('.obsolete-check');
+        if (chk) chk.checked = cb.checked;
+    });
+}
+
+// ===== Real-timeSearchFilter（Enter keyOrReal-time filter） =====
+function filterObsoleteTable(keyword) {
+    keyword = keyword.trim();
+    var tbody = document.querySelector('#obsoleteTable tbody');
+    if (!tbody) return;
+    var rows = tbody.querySelectorAll('tr');
+    var matchCount = 0;
+    rows.forEach(function(row) {
+        var text = row.textContent || '';
+        var show = (keyword === '') || text.toLowerCase().includes(keyword.toLowerCase());
+        row.style.display = show ? '' : 'none';
+        if (show) matchCount++;
+    });
+    // UpdateNew"Total X Records"
+    var countEl = document.querySelector('.file-count');
+    if (countEl) {
+        if (keyword === '') {
+            countEl.textContent = 'Total ' + rows.length + ' Records';
+        } else {
+            countEl.textContent = 'Match ' + matchCount + ' Records';
+        }
+    }
+    // SearchPrevent enter in boxSubmit（AlreadyChangeForReal-time，ThisRow keep compatibility）
+}
+
+// Bind enter event，Prevent accidental enterSubmitForm
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('searchInput');
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') e.preventDefault();
+        });
+    }
+});
+
+// ===== DeleteObsolete Files =====
+async function deleteObsolete(fileId, fileName) {
+    if (!confirm('Are you sure you want to permanently delete "' + fileName + '"? This action cannot be undone!')) return;
+    if (!confirm('Confirm again: deleted files cannot be restored. Continue?')) return;
+    console.log('Deleting single file:', fileId, fileName);
+    const resp = await fetch('/api/obsolete/' + fileId, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    });
+    console.log('Response:', resp.status);
+    const data = await resp.json();
+    console.log('Data:', data);
+    alert(data.message);
+    if (data.success) location.reload();
+}
+
+// ===== Batch DeleteButton（AdminVisible） =====
+async function batchDeleteObsolete() {
+    try {
+        var checked = document.querySelectorAll('.obsolete-check:checked');
+        console.log('batchDeleteObsolete called, count:', checked.length);
+        if (checked.length === 0) { alert('Please select files to delete first.'); return; }
+        if (!confirm('Are you sure you want to permanently delete ' + checked.length + ' selected files? This action cannot be undone!')) return;
+        if (!confirm('Confirm again: deleted files cannot be restored. Continue?')) return;
+        var ids = Array.from(checked).map(function(el) { return el.value; });
+        console.log('IDs to delete:', ids);
+        
+        // ShowLoadingStatus
+        var btn = document.querySelector('.btn-delete');
+        if(btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
+        }
+        
+        var results = [];
+        for (var i = 0; i < ids.length; i++) {
+            console.log('Sending DELETE for id:', ids[i]);
+            try {
+                var resp = await fetch('/api/obsolete/' + ids[i], {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                console.log('Response for', ids[i], ':', resp.status);
+                var data = await resp.json();
+                console.log('Data for', ids[i], ':', data);
+                results.push(data);
+            } catch(err) {
+                console.error('Error deleting', ids[i], ':', err);
+                results.push({ success: false, message: err.message });
+            }
+        }
+        
+        var ok = results.filter(function(r) { return r && r.success; }).length;
+        var failed = results.length - ok;
+        var msg = 'Successfully deleted ' + ok + ' files';
+        if (failed > 0) msg += ', failed ' + failed + ' items';
+        console.log('Final message:', msg);
+        alert(msg);
+        location.reload();
+    } catch(err) {
+        console.error('batchDeleteObsolete error:', err);
+        alert('Batch delete error: ' + err.message);
+    }
+}
+
+// SelectedMore quantityNew
+document.querySelectorAll('.obsolete-check').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var n = document.querySelectorAll('.obsolete-check:checked').length;
+        var el = document.getElementById('obsoleteSelCount');
+        if (el) el.textContent = n > 0 ? 'Selected ' + n + ' files' : '';
+    });
+});
+
+// DepartmentSelectLinkage
+document.getElementById('deptSelect').addEventListener('change', function() {
+  var dept = this.value;
+  var typeSel = document.getElementById('typeSelect');
+  typeSel.innerHTML = '<option value="">Select Type</option>';
+  if (dept && deptFileTypes[dept]) {
+    deptFileTypes[dept].forEach(function(t) {
+      var opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      typeSel.appendChild(opt);
+    });
+  }
+});
+
+// UploadFormSubmit
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  var dept = document.getElementById('deptSelect').value;
+  var ftype = document.getElementById('typeSelect').value;
+  var files = document.getElementById('fileInput').files;
+  var msg = document.getElementById('uploadMsg');
+  
+  if (!dept) { msg.innerHTML = '<span style="color:#ff6b6b;">Please select a department.</span>'; return; }
+  if (!ftype) { msg.innerHTML = '<span style="color:#ff6b6b;">Please select a file type.</span>'; return; }
+  if (files.length === 0) { msg.innerHTML = '<span style="color:#ff6b6b;">Please select files to upload.</span>'; return; }
+  
+  msg.innerHTML = '<span style="color:var(--accent);"><i class="fas fa-spinner fa-spin"></i> Uploading...</span>';
+  
+  var fd = new FormData();
+  fd.append('department', dept);
+  fd.append('file_type', ftype);
+  fd.append('reason', 'Manually uploaded obsolete file');
+  for (var i = 0; i < files.length; i++) {
+    fd.append('files', files[i]);
+  }
+  
+  try {
+    var resp = await fetch('/api/obsolete/upload', { method: 'POST', body: fd });
+    var data = await resp.json();
+    console.log('Upload response:', data);
+    
+    if (data.success) {
+      msg.innerHTML = '<span style="color:#2ed573;"><i class="fas fa-check"></i> ' + data.message + '</span>';
+      setTimeout(function() { location.reload(); }, 1500);
+    } else {
+      msg.innerHTML = '<span style="color:#ff6b6b;"><i class="fas fa-times"></i> ' + data.message + '</span>';
+    }
+  } catch (err) {
+    msg.innerHTML = '<span style="color:#ff6b6b;">Request failed: ' + err + '</span>';
+  }
+});
+
+// ===== Column width drag =====
+function initColResize() {
+    var table = document.getElementById('obsoleteTable');
+    if (!table) return;
+    var ths = table.querySelectorAll('thead th.resizable');
+    ths.forEach(function(th) {
+        var resizer = document.createElement('div');
+        resizer.style.cssText = 'position:absolute;right:0;top:0;height:100%;width:8px;cursor:col-resize;z-index:5;background:linear-gradient(90deg,transparent,rgba(0,212,255,0.3),transparent);';
+        resizer.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var startX = e.pageX;
+            var startW = th.offsetWidth;
+            function onMove(ev) {
+                var diff = ev.pageX - startX;
+                var newW = Math.max(60, startW + diff);
+                th.style.width = newW + 'px';
+            }
+            function onUp() {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            }
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        th.style.position = 'relative';
+        th.appendChild(resizer);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initShiftSelectObs();
+    initColResize();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-tasks mr-2"></i>File Approval
+    </h1>
+    {% if session.role not in ['Read-only User'] %}
+    <a href="{{ url_for('workflow_create') }}" class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold inline-flex items-center gap-2">
+        <i class="fas fa-plus"></i>New Approval Workflow
+    </a>
+    {% endif %}
+</div>
+
+<!-- Batch OperationToolbar -->
+{% if session.role in ['System Admin', 'Quality Specialist'] %}
+<div class="glass-card rounded-xl px-5 py-3 mb-4 flex items-center gap-3 flex-wrap">
+    <span class="text-xs font-medium" style="color:var(--text-dim);">Batch Operation：</span>
+    <span id="batchSelCount" class="text-xs" style="color:var(--accent);">Not selected</span>
+    <button onclick="batchExportPDF()"
+            class="px-4 py-1.5 rounded-lg text-xs font-semibold"
+            style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);">
+        <i class="fas fa-file-pdf mr-1"></i>Batch Export PDF
+    </button>
+    {% if session.role == 'System Admin' %}
+    <button onclick="batchDeleteWorkflows()"
+            class="px-4 py-1.5 rounded-lg text-xs font-semibold"
+            style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2);">
+        <i class="fas fa-trash mr-1"></i>Batch Delete
+    </button>
+    {% endif %}
+    <button onclick="clearAllChecks()" class="px-3 py-1.5 rounded-lg text-xs"
+            style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.2);">
+        Cancel or Select All
+    </button>
+</div>
+{% endif %}
+
+<!-- Search -->
+<div class="mb-4 flex items-center gap-2">
+    <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-xs" style="color:var(--text-dim);"></i>
+        <input type="text" id="searchInput" placeholder="Search Workflow No.、Initiator、Attachment File name..."
+               class="pl-9 pr-4 py-2 rounded-lg text-sm w-80"
+               style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;"
+               onkeyup="searchWorkflows(this.value)">
+    </div>
+    <span id="searchCount" class="text-xs" style="color:var(--text-dim);"></span>
+    <button id="clearSearch" onclick="clearSearch()" class="text-xs px-2 py-1 rounded hidden"
+            style="background:rgba(239,68,68,0.1); color:#f87171;">
+        <i class="fas fa-times mr-1"></i>Clear
+    </button>
+</div>
+
+<!-- Search Results -->
+<div id="searchResults" class="glass-card rounded-xl overflow-hidden mb-5 hidden">
+    <div class="px-5 py-4 border-b font-bold text-sm flex justify-between items-center" style="border-color:rgba(0,212,255,0.15); color:var(--accent);">
+        <span><i class="fas fa-search mr-2"></i>Search Results</span>
+        <span id="resultCount" class="text-xs" style="color:var(--text-dim);"></span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                    <th class="px-5 py-3 font-medium">Workflow No.</th>
+                    <th class="px-4 py-3 font-medium">Title</th>
+                    <th class="px-4 py-3 font-medium">Initiator</th>
+                    <th class="px-4 py-3 font-medium">Current Node</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium">Attachment</th>
+                    <th class="px-4 py-3 font-medium">Operation</th>
+                </tr>
+            </thead>
+            <tbody id="searchResultsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Pending ApprovalList -->
+<div class="glass-card rounded-xl overflow-hidden mb-5">
+    <div class="px-5 py-4 border-b font-bold text-sm flex items-center justify-between" style="border-color:rgba(0,212,255,0.15); color:var(--accent);">
+        <span><i class="fas fa-clock mr-2"></i>Pending Approval Workflow ({{ pending_list|length }})</span>
+        {% if session.role in ['System Admin', 'Quality Specialist'] and pending_list %}
+        <label class="flex items-center gap-2 text-xs font-normal cursor-pointer" style="color:var(--text-dim);">
+            <input type="checkbox" id="selectAllPending" onchange="toggleAll('pending-check', this.checked)" style="accent-color:var(--accent);">
+            Select All
+        </label>
+        {% endif %}
+    </div>
+    {% if pending_list %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                    {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                    <th class="px-3 py-3" style="width:36px;"></th>
+                    {% endif %}
+                    <th class="px-5 py-3 font-medium">Workflow No.</th>
+                    <th class="px-4 py-3 font-medium" style="min-width:300px;">Title</th>
+                    <th class="px-4 py-3 font-medium">Initiator</th>
+                    <th class="px-4 py-3 font-medium">Current Node</th>
+                    <th class="px-4 py-3 font-medium">Initiated Date</th>
+                    <th class="px-4 py-3 font-medium">Operation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in pending_list %}
+                <tr class="border-t hover:opacity-80 transition-opacity" style="border-color:rgba(255,255,255,0.05);">
+                    {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                    <td class="px-3 py-3">
+                        <input type="checkbox" class="pending-check wf-check rounded"
+                               value="{{ w.id }}" data-serial="{{ w.serial_no }}"
+                               style="accent-color:var(--accent);" onchange="updateBatchCount()">
+                    </td>
+                    {% endif %}
+                    <td class="px-5 py-3 font-mono text-xs" style="color:var(--accent);">{{ w.serial_no }}</td>
+                    <td class="px-4 py-3">{{ w.title }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ w.initiator_name }}</td>
+                    <td class="px-4 py-3">
+                        <span class="status-badge status-pending"><i class="fas fa-hourglass-half mr-1"></i>{{ w.current_node }}</span>
+                    </td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ w.created_at[:10] }}</td>
+                    <td class="px-4 py-3">
+                        <a href="{{ url_for('workflow_detail', workflow_id=w.id) }}"
+                           class="px-3 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--accent);">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                        <a href="/api/workflow/{{ w.id }}/pdf" target="_blank"
+                           class="px-3 py-1 rounded text-xs ml-1" style="background:rgba(239,68,68,0.1); color:#f87171;">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-12" style="color:var(--text-dim);">
+        <i class="fas fa-check-circle text-3xl mb-3 opacity-30"></i>
+        <div class="text-sm">No pending Approval Workflow</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- History Workflow -->
+<div class="glass-card rounded-xl overflow-hidden">
+    <div class="px-5 py-4 border-b font-bold text-sm flex items-center justify-between" style="border-color:rgba(0,212,255,0.15); color:var(--accent);">
+        <span><i class="fas fa-history mr-2"></i>History Workflow (Recent50)</span>
+        {% if session.role in ['System Admin', 'Quality Specialist'] and history_list %}
+        <label class="flex items-center gap-2 text-xs font-normal cursor-pointer" style="color:var(--text-dim);">
+            <input type="checkbox" id="selectAllHistory" onchange="toggleAll('history-check', this.checked)" style="accent-color:var(--accent);">
+            Select All
+        </label>
+        {% endif %}
+    </div>
+    {% if history_list %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                    {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                    <th class="px-3 py-3" style="width:36px;"></th>
+                    {% endif %}
+                    <th class="px-5 py-3 font-medium">Workflow No.</th>
+                    <th class="px-4 py-3 font-medium" style="min-width:300px;">Title</th>
+                    <th class="px-4 py-3 font-medium">Initiator</th>
+                    <th class="px-4 py-3 font-medium">Current Node</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium">Initiated Date</th>
+                    <th class="px-4 py-3 font-medium">Operation</th>
+                </tr>
+            </thead>
+            <tbody id="historyBody">
+                {% for w in history_list %}
+                <tr class="border-t hover:opacity-80 transition-opacity hist-row" style="border-color:rgba(255,255,255,0.05);"
+                    data-title="{{ w.title }}" data-serial="{{ w.serial_no }}" data-initiator="{{ w.initiator_name }}">
+                    {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                    <td class="px-3 py-3">
+                        <input type="checkbox" class="history-check wf-check rounded"
+                               value="{{ w.id }}" data-serial="{{ w.serial_no }}"
+                               style="accent-color:var(--accent);" onchange="updateBatchCount()">
+                    </td>
+                    {% endif %}
+                    <td class="px-5 py-3 font-mono text-xs" style="color:var(--accent);">{{ w.serial_no }}</td>
+                    <td class="px-4 py-3">{{ w.title }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ w.initiator_name }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ w.current_node }}</td>
+                    <td class="px-4 py-3">
+                        {% if w.status=='In Progress' %}
+                        <span class="status-badge status-pending"><i class="fas fa-clock mr-1"></i>In Progress</span>
+                        {% elif w.status=='Approved' %}
+                        <span class="status-badge status-published"><i class="fas fa-check mr-1"></i>Approved</span>
+                        {% elif w.status=='Completed' %}
+                        <span class="status-badge" style="background:rgba(34,197,94,0.2);color:#22c55e;"><i class="fas fa-check mr-1"></i>Already Approved</span>
+                        {% elif w.status=='Returned' %}
+                        <span class="status-badge status-obsolete"><i class="fas fa-times mr-1"></i>Returned</span>
+                        {% else %}
+                        <span class="status-badge status-obsolete"><i class="fas fa-times mr-1"></i>{{ w.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ w.created_at[:10] }}</td>
+                    <td class="px-4 py-3">
+                        <a href="{{ url_for('workflow_detail', workflow_id=w.id) }}"
+                           class="px-3 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--accent);">
+                            <i class="fas fa-eye mr-1"></i>View
+                        </a>
+                        <a href="/api/workflow/{{ w.id }}/pdf" target="_blank"
+                           class="px-3 py-1 rounded text-xs ml-1" style="background:rgba(239,68,68,0.1); color:#f87171;">
+                            <i class="fas fa-file-pdf mr-1"></i>PDF
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="text-center py-12" style="color:var(--text-dim);">
+        <i class="fas fa-inbox text-3xl mb-3 opacity-30"></i>
+        <div class="text-sm">No historyWorkflow Records</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Batch PDFProgressPopup -->
+<div id="batchPdfModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+    <div class="glass-card rounded-xl p-6" style="min-width:360px;max-width:480px;">
+        <div class="text-sm font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-file-pdf mr-2"></i>Batch ExportPDF
+        </div>
+        <div id="batchPdfProgress" class="text-sm mb-3" style="color:var(--text-dim);">Preparing......</div>
+        <div class="w-full rounded-full h-2 mb-4" style="background:rgba(0,0,0,0.3);">
+            <div id="batchPdfBar" class="h-2 rounded-full transition-all" style="width:0%;background:var(--accent);"></div>
+        </div>
+        <div id="batchPdfLinks" class="space-y-1 max-h-48 overflow-y-auto mb-4"></div>
+        <button id="batchPdfClose" onclick="document.getElementById('batchPdfModal').style.display='none'" class="px-4 py-2 rounded-lg text-xs hidden"
+                style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">
+            Close
+        </button>
+    </div>
+</div>
+
+<script>
+// ===== Shift Multi-select support =====
+var lastChecked = null;
+
+document.addEventListener('click', function(e) {
+    var cb = e.target;
+    if (!cb.classList.contains('wf-check')) return;
+    if (cb.classList.contains('wf-check')) {
+        if (e.shiftKey && lastChecked) {
+            // Within same group Checkbox List（Select only within same table）
+            var groupClass = cb.classList.contains('pending-check') ? 'pending-check'
+                           : cb.classList.contains('history-check') ? 'history-check' : null;
+            if (groupClass) {
+                var all = Array.from(document.querySelectorAll('.' + groupClass));
+                var idxA = all.indexOf(lastChecked);
+                var idxB = all.indexOf(cb);
+                if (idxA >= 0 && idxB >= 0) {
+                    var start = Math.min(idxA, idxB);
+                    var end   = Math.max(idxA, idxB);
+                    for (var i = start; i <= end; i++) {
+                        all[i].checked = true;
+                    }
+                }
+            }
+        }
+        lastChecked = cb;
+        updateBatchCount();
+    }
+});
+
+// ===== Selected count =====
+function updateBatchCount() {
+    var n = document.querySelectorAll('.wf-check:checked').length;
+    var el = document.getElementById('batchSelCount');
+    if (el) el.textContent = n > 0 ? ('Selected ' + n + '  itemsWorkflow') : 'Not selected';
+}
+
+function toggleAll(cls, checked) {
+    document.querySelectorAll('.' + cls).forEach(function(cb) {
+        cb.checked = checked;
+    });
+    updateBatchCount();
+}
+
+function clearAllChecks() {
+    document.querySelectorAll('.wf-check').forEach(function(cb) { cb.checked = false; });
+    var p = document.getElementById('selectAllPending');
+    var h = document.getElementById('selectAllHistory');
+    if (p) p.checked = false;
+    if (h) h.checked = false;
+    updateBatchCount();
+}
+
+function getCheckedIds() {
+    return Array.from(document.querySelectorAll('.wf-check:checked')).map(function(cb) {
+        return { id: cb.value, serial: cb.dataset.serial };
+    });
+}
+
+// ===== Batch ExportPDF =====
+async function batchExportPDF() {
+    var items = getCheckedIds();
+    if (items.length === 0) { alert('Please firstCheck to ExportWorkflow'); return; }
+
+    var modal = document.getElementById('batchPdfModal');
+    var progress = document.getElementById('batchPdfProgress');
+    var bar = document.getElementById('batchPdfBar');
+    var links = document.getElementById('batchPdfLinks');
+    var closeBtn = document.getElementById('batchPdfClose');
+
+    modal.style.display = 'flex';
+    links.innerHTML = '';
+    closeBtn.classList.add('hidden');
+    bar.style.width = '0%';
+
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        progress.textContent = ('Now Generating ' + (i + 1) + ' / ' + items.length + '：' + item.serial);
+        bar.style.width = (Math.round((i / items.length) * 100)) + '%';
+        try {
+            var url = '/api/workflow/' + item.id + '/pdf';
+            var link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.download = item.serial + '_Approval Record.pdf';
+            link.className = 'block text-xs px-3 py-1.5 rounded';
+            link.style.cssText = 'background:rgba(0,212,255,0.08);color:var(--accent);text-decoration:none;';
+            link.innerHTML = '<i class="fas fa-file-pdf mr-2"></i>' + item.serial + ' — Click To Download';
+            links.appendChild(link);
+            // TriggerDownload
+            link.click();
+            // Interval500msAvoid browser blocking
+            await new Promise(function(r) { setTimeout(r, 500); });
+        } catch(e) {
+            var errEl = document.createElement('div');
+            errEl.className = 'text-xs px-3 py-1';
+            errEl.style.color = '#f87171';
+            errEl.textContent = item.serial + ' ExportFailed';
+            links.appendChild(errEl);
+        }
+    }
+
+    bar.style.width = '100%';
+    progress.textContent = 'All completed，Total ' + items.length + '  itemsPDF';
+    closeBtn.classList.remove('hidden');
+}
+
+// ===== Batch Delete（Admin only） =====
+async function batchDeleteWorkflows() {
+    var items = getCheckedIds();
+    if (items.length === 0) { alert('Please firstCheck to DeleteWorkflow'); return; }
+    var serials = items.map(function(i) { return i.serial; }).join('、');
+    if (!confirm('ConfirmPermanentlyDeleteWithDown ' + items.length + '  itemsApproval Workflow?？\n\n' + serials + '\n\nThisOperationCannot Restore！')) return;
+    if (!confirm('AgainConfirm：Delete afterHaveApproval RecordAndAttachmentWill alsoDelete，ConfirmContinue？')) return;
+
+    var ok = 0, fail = 0;
+    for (var i = 0; i < items.length; i++) {
+        try {
+            var resp = await fetch('/workflow/' + items[i].id + '/delete', { method: 'POST' });
+            var data = await resp.json();
+            if (data.success) ok++; else fail++;
+        } catch(e) { fail++; }
+    }
+    alert('DeleteCompleted：Success ' + ok + '  items，Failed ' + fail + '  items');
+    location.reload();
+}
+
+// ===== Search =====
+var searchTimeout = null;
+function searchWorkflows(q) {
+    clearTimeout(searchTimeout);
+    var countEl = document.getElementById('searchCount');
+    var clearBtn = document.getElementById('clearSearch');
+    if (!q.trim()) { clearSearch(); return; }
+    clearBtn.classList.remove('hidden');
+    countEl.textContent = 'Search In ...';
+    searchTimeout = setTimeout(async function() {
+        try {
+            var resp = await fetch('/api/workflows/search?q=' + encodeURIComponent(q));
+            var data = await resp.json();
+            renderSearchResults(data.results, q);
+            countEl.textContent = 'Found ' + data.count + '  results';
+        } catch(e) { countEl.textContent = 'Search Failed'; }
+    }, 300);
+}
+
+function renderSearchResults(results, keyword) {
+    var container = document.getElementById('searchResults');
+    var tbody = document.getElementById('searchResultsBody');
+    var countEl = document.getElementById('resultCount');
+    if (results.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8" style="color:var(--text-dim);"><i class="fas fa-inbox mr-2"></i>No matches foundWorkflow</td></tr>';
+        countEl.textContent = '';
+        container.classList.remove('hidden');
+        return;
+    }
+    countEl.textContent = 'Total ' + results.length + ' ';
+    function hl(text) {
+        return text.replace(new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'),
+            '<mark style="background:rgba(0,212,255,0.3);color:inherit;border-radius:2px;padding:0 2px;">$1</mark>');
+    }
+    var html = results.map(function(w) {
+        var badge = w.status === 'In Progress'
+            ? '<span class="status-badge status-pending"><i class="fas fa-clock mr-1"></i>In Progress</span>'
+            : w.status === 'Approved' || w.status === 'Completed'
+            ? '<span class="status-badge status-published"><i class="fas fa-check mr-1"></i>' + w.status + '</span>'
+            : '<span class="status-badge status-obsolete"><i class="fas fa-times mr-1"></i>' + w.status + '</span>';
+        var att = (w.attachments && w.attachments.length)
+            ? w.attachments.slice(0,3).map(function(f) {
+                var n = f.length > 20 ? f.substring(0,20)+'...' : f;
+                return f.toLowerCase().includes(keyword.toLowerCase())
+                    ? '<span class="text-xs px-1 rounded" style="background:rgba(0,212,255,0.2);color:var(--accent);">' + n + '</span>'
+                    : '<span class="text-xs" style="color:var(--text-dim);">' + n + '</span>';
+              }).join('<span class="mx-1" style="color:var(--text-dim);">|</span>')
+              + (w.attachments.length > 3 ? '<span class="text-xs" style="color:var(--text-dim);">+' + (w.attachments.length-3) + '</span>' : '')
+            : '<span class="text-xs" style="color:var(--text-dim);">-</span>';
+        return '<tr class="border-t hover:opacity-80 transition-opacity" style="border-color:rgba(255,255,255,0.05);">'
+            + '<td class="px-5 py-3 font-mono text-xs" style="color:var(--accent);">' + hl(w.serial_no) + '</td>'
+            + '<td class="px-4 py-3">' + hl(w.title) + '</td>'
+            + '<td class="px-4 py-3 text-xs" style="color:var(--text-dim);">' + hl(w.initiator_name) + '</td>'
+            + '<td class="px-4 py-3 text-xs" style="color:var(--text-dim);">' + w.current_node + '</td>'
+            + '<td class="px-4 py-3">' + badge + '</td>'
+            + '<td class="px-4 py-3"><div class="flex flex-wrap gap-1 items-center">' + att + '</div></td>'
+            + '<td class="px-4 py-3"><a href="/workflow/' + w.id + '" class="px-3 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1);color:var(--accent);"><i class="fas fa-eye mr-1"></i>View</a></td>'
+            + '</tr>';
+    }).join('');
+    tbody.innerHTML = html;
+    container.classList.remove('hidden');
+}
+
+function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResults').classList.add('hidden');
+    document.getElementById('searchCount').textContent = '';
+    document.getElementById('clearSearch').classList.add('hidden');
+}
+</script>
+{% endblock %}
+

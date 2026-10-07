@@ -1,0 +1,384 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-users-cog mr-2"></i>User Management
+    </h1>
+    <div class="flex items-center gap-2">
+        <a href="/users/export" class="px-3 py-2 rounded-lg text-xs font-medium"
+           style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80;"
+           title="Export Users For Excel">
+            <i class="fas fa-file-excel mr-1"></i>Batch Export
+        </a>
+        <a href="/users/import" class="px-3 py-2 rounded-lg text-xs font-medium"
+           style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:var(--accent);"
+           title="From Excel Batch Import User">
+            <i class="fas fa-file-import mr-1"></i>Batch Import
+        </a>
+        <button onclick="showCreateModal()" class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold">
+            <i class="fas fa-user-plus mr-2"></i>New User
+        </button>
+    </div>
+</div>
+
+<!-- UsernameSearch -->
+<div class="glass-card rounded-xl p-3 mb-3 flex items-center gap-3">
+    <i class="fas fa-search text-sm" style="color:var(--accent);opacity:0.6;"></i>
+    <input type="text" id="userSearch" placeholder="Input Username To Search…"
+           class="flex-1 bg-transparent text-sm outline-none"
+           style="color:#e2e8f0; border:none;"
+           oninput="filterUsers()">
+    <span id="searchCount" class="text-xs" style="color:var(--text-dim);"></span>
+</div>
+
+<!-- Batch OperationColumn -->
+<div id="batchBar" class="glass-card rounded-xl p-3 mb-3 flex items-center justify-between hidden" style="background:rgba(239,68,68,0.1); border-color:rgba(239,68,68,0.3);">
+    <div class="flex items-center gap-3">
+        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="w-4 h-4 cursor-pointer">
+        <span class="text-sm" style="color:var(--text-dim);">Select All</span>
+        <span id="selectedCount" class="text-sm font-medium" style="color:var(--accent);">Already Selected 0 Item</span>
+    </div>
+    <div class="flex items-center gap-2">
+        <button onclick="batchDelete()" class="px-4 py-2 rounded-lg text-xs font-medium" style="background:rgba(251,191,36,0.2); border:1px solid rgba(251,191,36,0.4); color:#fbbf24;">
+            <i class="fas fa-user-slash mr-1"></i>Batch Resign
+        </button>
+        <button onclick="permanentBatchDelete()" class="px-4 py-2 rounded-lg text-xs font-medium" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#f87171;">
+            <i class="fas fa-trash-alt mr-1"></i>CompletelyDelete
+        </button>
+    </div>
+</div>
+
+<div class="glass-card rounded-xl overflow-hidden">
+    {% if users %}
+    {% if total_pages > 1 %}
+    <div class="px-5 py-3 text-xs flex items-center justify-between flex-wrap gap-2" style="border-bottom:1px solid rgba(0,212,255,0.1); color:var(--text-dim);">
+        <span>Total {{ total }}  itemsUser，No.  {{ page }}/{{ total_pages }} Page</span>
+        <div class="flex items-center gap-1">
+            {% if page > 1 %}
+            <a href="{{ url_for('users', page=page-1) }}" class="px-3 py-1 rounded" style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">Previous</a>
+            {% endif %}
+            {% set start_page = [1, page - 2]|max %}
+            {% set end_page = [total_pages, page + 2]|min %}
+            {% for p in range(start_page, end_page + 1) %}
+            <a href="{{ url_for('users', page=p) }}" class="px-3 py-1 rounded {% if p == page %}text-black{% endif %}" style="{% if p == page %}background:var(--accent);color:#000;{% else %}background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);{% endif %}">{{ p }}</a>
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="{{ url_for('users', page=page+1) }}" class="px-3 py-1 rounded" style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm" id="usersTable">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                    <th class="px-3 py-3 font-medium w-10">
+                        <input type="checkbox" id="headerCheckbox" onchange="toggleSelectAll(this)" class="w-4 h-4 cursor-pointer">
+                    </th>
+                    <th class="px-5 py-3 font-medium">Username</th>
+                    <th class="px-4 py-3 font-medium">Email</th>
+                    <th class="px-4 py-3 font-medium">Department</th>
+                    <th class="px-4 py-3 font-medium">CDSID</th>
+                    <th class="px-4 py-3 font-medium">Role</th>
+                    <th class="px-4 py-3 font-medium">Status</th>
+                    <th class="px-4 py-3 font-medium">Theme</th>
+                    <th class="px-4 py-3 font-medium">Created At</th>
+                    <th class="px-4 py-3 font-medium">Operation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr class="border-t hover:opacity-80 transition-opacity" style="border-color:rgba(255,255,255,0.05);" data-id="{{ u.id }}">
+                    <td class="px-3 py-3">
+                        <input type="checkbox" class="user-checkbox w-4 h-4 cursor-pointer" value="{{ u.id }}" onclick="onCheckboxClick(event, this)">
+                    </td>
+                    <td class="px-5 py-3 font-medium">{{ u.username }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ u.email or '-' }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ u.department or '-' }}</td>
+                    <td class="px-4 py-3 text-xs font-mono" style="color:var(--accent);">{{ u.cdsid or '-' }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs"
+                              style="background:{% if u.role=='System Admin' %}rgba(239,68,68,0.2);color:#f87171;{% elif u.role=='Quality Specialist' %}rgba(139,92,246,0.2);color:#c4b5fd;{% elif u.role=='Read-only User' %}rgba(100,116,139,0.2);color:#94a3b8;{% else %}rgba(0,212,255,0.15);color:var(--accent);{% endif %};">
+                            {{ u.role }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if u.status=='At Position' %}
+                        <span class="status-badge status-published">At Position</span>
+                        {% else %}
+                        <span class="status-badge status-obsolete">Resign</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded text-xs" style="background:rgba(0,212,255,0.1);color:var(--accent);" title="{{ u.user_theme }}">
+                            {{ u.user_theme or 'tech-blue' }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ u.created_at[:10] }}</td>
+                    <td class="px-4 py-3">
+                        <button onclick="editUser('{{ u.id }}')" class="px-2 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--accent);">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteUser('{{ u.id }}')" class="px-2 py-1 rounded text-xs ml-1" style="background:rgba(239,68,68,0.1); color:#f87171;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if total_pages > 1 %}
+    <div class="px-5 py-3 border-t" style="border-color:rgba(0,212,255,0.1);"></div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-16" style="color:var(--text-dim);">
+        <i class="fas fa-users text-4xl mb-3 opacity-20"></i>
+        <div class="text-sm">No No User data</div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Create/EditUser modal -->
+<div id="userModal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background:rgba(0,0,0,0.7);">
+    <div class="glass-card rounded-xl p-6 w-full max-w-md" style="border-color:var(--accent);">
+        <h3 class="text-lg font-bold mb-5" style="color:var(--accent);">
+            <i class="fas fa-user-plus mr-2"></i><span id="modalTitle">New User</span>
+        </h3>
+        <form id="userForm" class="space-y-4">
+            <input type="hidden" id="editUserId">
+            <div>
+                <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Username *（≥3Bit）</label>
+                <input type="text" id="fUsername" required minlength="3"
+                       class="w-full px-4 py-2.5 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div>
+                <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Email *</label>
+                <input type="email" id="fEmail" required
+                       class="w-full px-4 py-2.5 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Email</label>
+                    <input type="email" id="fEmail"
+                           class="w-full px-4 py-2.5 rounded-lg text-sm"
+                           style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Department</label>
+                    <input type="text" id="fDept"
+                           class="w-full px-4 py-2.5 rounded-lg text-sm"
+                           style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">CDSID（Windows Login）</label>
+                    <input type="text" id="fCdsid"
+                           class="w-full px-4 py-2.5 rounded-lg text-sm"
+                           style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Status</label>
+                    <select id="fStatus"
+                            class="w-full px-4 py-2.5 rounded-lg text-sm"
+                            style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                        <option value="At Position">At Position</option>
+                        <option value="Resign">Resign</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Role</label>
+                <select id="fRole"
+                        class="w-full px-4 py-2.5 rounded-lg text-sm"
+                        style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                    <option value="Regular User">Regular User</option>
+                    <option value="Read-only User">Read-only User</option>
+                    <option value="Quality Specialist">Quality Specialist</option>
+                    <option value="System Admin">System Admin</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium mb-1" style="color:var(--text-dim);">Theme</label>
+                <select id="fTheme"
+                        class="w-full px-4 py-2.5 rounded-lg text-sm"
+                        style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                    <option value="tech-blue">Tech Blue（Default）</option>
+                    <option value="dark-purple">Midnight Purple</option>
+                    <option value="forest-green">Forest Green</option>
+                    <option value="sunset-orange">Sunset Orange</option>
+                    <option value="rose-pink">Rose Pink</option>
+                    <option value="ocean-teal">Aqua</option>
+                    <option value="midnight-blue">Midnight Blue</option>
+                    <option value="golden-yellow">Golden</option>
+                    <option value="crimson-red">Dark Red</option>
+                    <option value="slate-gray">Slate Gray</option>
+                    <option value="light-white">Pure White</option>
+                    <option value="light-blue">Light Blue</option>
+                    <option value="light-cream">Cream Color</option>
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="tech-btn flex-1 py-2.5 rounded-lg text-white text-sm font-semibold">Save</button>
+                <button type="button" onclick="closeModal()" class="flex-1 py-2.5 rounded-lg text-sm" style="background:rgba(100,100,100,0.2); color:var(--text-dim);">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const usersData = {{ users|tojson }};
+let lastChecked = null;
+
+function filterUsers() {
+    const kw = document.getElementById('userSearch').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#usersTable tbody tr');
+    let visible = 0;
+    rows.forEach(function(row) {
+        const name = row.querySelector('td:nth-child(2)').textContent.trim().toLowerCase();
+        const show = !kw || name.includes(kw);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('searchCount').textContent = kw ? visible + ' / ' + rows.length + ' ' : '';
+    updateBatchBar();
+}
+
+function onCheckboxClick(event, checkbox) {
+    const checkboxes = Array.from(document.querySelectorAll('.user-checkbox')).filter(cb => cb.closest('tr').style.display !== 'none');
+    const currentIndex = checkboxes.indexOf(checkbox);
+    
+    if (event.shiftKey && lastChecked !== null) {
+        const start = Math.min(lastChecked, currentIndex);
+        const end = Math.max(lastChecked, currentIndex);
+        for (let i = start; i <= end; i++) {
+            checkboxes[i].checked = checkbox.checked;
+        }
+    }
+    
+    lastChecked = currentIndex;
+    updateBatchBar();
+}
+
+function toggleSelectAll(source) {
+    // GetTriggerEvent checkbox，OrDefault use headerCheckbox
+    const sourceCb = source || document.getElementById('headerCheckbox');
+    const checked = sourceCb.checked;
+    
+    // Sync two itemsSelect AllCheckboxStatus
+    document.getElementById('headerCheckbox').checked = checked;
+    document.getElementById('selectAll').checked = checked;
+    
+    // SettingsHaveVisible row checkboxStatus
+    document.querySelectorAll('.user-checkbox').forEach(function(cb) {
+        if (cb.closest('tr').style.display !== 'none') {
+            cb.checked = checked;
+        }
+    });
+    
+    updateBatchBar();
+}
+
+function updateBatchBar() {
+    const checkedBoxes = document.querySelectorAll('.user-checkbox:checked');
+    const count = checkedBoxes.length;
+    document.getElementById('selectedCount').textContent = 'Already Selected ' + count + ' Item';
+    
+    const batchBar = document.getElementById('batchBar');
+    if (count > 0) {
+        batchBar.classList.remove('hidden');
+    } else {
+        batchBar.classList.add('hidden');
+        document.getElementById('headerCheckbox').checked = false;
+        document.getElementById('selectAll').checked = false;
+    }
+}
+
+async function batchDelete() {
+    const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    
+    if (!confirm('ConfirmNeed toWillSelected ' + ids.length + '  itemsUser settingsForResignStatus?？')) return;
+    
+    const resp = await fetch('/api/users/batch-delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: ids})
+    });
+    const result = await resp.json();
+    alert(result.message);
+    if (result.success) location.reload();
+}
+
+async function permanentBatchDelete() {
+    const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    if (ids.length === 0) return;
+    
+    if (!confirm('Warning: This operation will permanently delete ' + ids.length + ' selected users!\nData cannot be restored after deletion. Related files, workflows and other associated data will lose user information.\n\nConfirm permanent deletion?')) return;
+    
+    const resp = await fetch('/api/users/permanent-delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: ids})
+    });
+    const result = await resp.json();
+    alert(result.message);
+    if (result.success) location.reload();
+}
+
+function showCreateModal() {
+    document.getElementById('modalTitle').textContent = 'New User';
+    document.getElementById('editUserId').value = '';
+    document.getElementById('userForm').reset();
+    document.getElementById('userModal').classList.remove('hidden');
+}
+function editUser(id) {
+    const u = usersData.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('modalTitle').textContent = 'EditUser';
+    document.getElementById('editUserId').value = id;
+    document.getElementById('fUsername').value = u.username;
+    document.getElementById('fEmail').value = u.email || '';
+    document.getElementById('fDept').value = u.department || '';
+    document.getElementById('fCdsid').value = u.cdsid || '';
+    document.getElementById('fStatus').value = u.status;
+    document.getElementById('fRole').value = u.role;
+    document.getElementById('fTheme').value = u.user_theme || 'tech-blue';
+    document.getElementById('userModal').classList.remove('hidden');
+}
+function closeModal() { document.getElementById('userModal').classList.add('hidden'); }
+document.getElementById('userForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('editUserId').value;
+    const data = {
+        username: document.getElementById('fUsername').value,
+        email: document.getElementById('fEmail').value,
+        department: document.getElementById('fDept').value,
+        cdsid: document.getElementById('fCdsid').value,
+        status: document.getElementById('fStatus').value,
+        role: document.getElementById('fRole').value,
+        user_theme: document.getElementById('fTheme').value,
+    };
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? '/api/users/' + id : '/api/users';
+    const resp = await fetch(url, {
+        method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    alert(result.message);
+    if (result.success) location.reload();
+});
+async function deleteUser(id) {
+    if (!confirm('ConfirmNeed toWillThisUser settingsForResignStatus?？')) return;
+    const resp = await fetch('/api/users/' + id, { method: 'DELETE' });
+    const result = await resp.json();
+    alert(result.message);
+    if (result.success) location.reload();
+}
+</script>
+{% endblock %}

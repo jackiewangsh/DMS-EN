@@ -1,0 +1,936 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-5">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-database mr-2"></i>Data Backup And Restore
+    </h1>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- BackupFeature -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-download mr-2"></i>File LibraryBackup
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--text-dim);">
+            Will the HavePublished Files ordered by「Department / File Type」Directory StructureBackupto specifiedFile。
+        </p>
+        <div class="mb-4">
+            <label class="block text-xs font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-folder mr-1"></i>SelectBackupSave Position
+            </label>
+            <div class="flex gap-2">
+                <input type="text" id="backupPath" readonly
+                       class="flex-1 px-4 py-2.5 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:var(--text); outline:none;"
+                       placeholder="Click button on right to selectSave Position">
+                <button onclick="openBackupFolderBrowser()" class="tech-btn px-4 py-2.5 rounded-lg text-white text-sm">
+                    <i class="fas fa-folder-open mr-1"></i>Select folder
+                </button>
+            </div>
+            <div id="selectedBackupFolderInfo" class="hidden mt-2 text-xs p-2 rounded" style="background:rgba(34,197,94,0.08); color:#4ade80;">
+                <i class="fas fa-check-circle mr-1"></i>Selected: <span id="selectedBackupFolderName"></span>
+            </div>
+            <div class="mt-2 text-xs p-2 rounded" style="background:rgba(0,212,255,0.08); color:var(--text-dim);">
+                <i class="fas fa-info-circle mr-1" style="color:var(--accent);"></i>
+                BackupWillSaveto selected folder，AutoCreate <code style="color:var(--accent);">DMSBK_YYYY-MM-DD_HH-MM-SS</code> Subdirectory
+            </div>
+        </div>
+
+        <div class="mb-4 p-4 rounded-lg" style="background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.2);">
+            <div class="text-sm font-medium mb-2" style="color:#fbbf24;">
+                <i class="fas fa-exclamation-triangle mr-1"></i>BackupDirectory StructureDescription
+            </div>
+            <div class="text-xs space-y-1" style="color:var(--text-dim);">
+                <div><code class="text-xs" style="color:var(--accent);">DMSBK/</code>（Backup Root directory）</div>
+                <div style="padding-left:1rem;">├─ <code class="text-xs" style="color:var(--accent);">HQ files/</code>（Department）</div>
+                <div style="padding-left:2rem;">├─ <code class="text-xs" style="color:var(--accent);">Quality Manual/</code>（File Type）</div>
+                <div style="padding-left:3rem;">└─ xxx.pdf, yyy.docx ...（Specific File）</div>
+                <div style="padding-left:1rem;">├─ <code class="text-xs" style="color:var(--accent);">Doc Apr/</code>（Approval Workflow Records）</div>
+            </div>
+        </div>
+        <button onclick="runBackup()" id="backupBtn" class="tech-btn px-6 py-2.5 rounded-lg text-white text-sm font-semibold">
+            <i class="fas fa-download mr-2"></i>StartBackup
+        </button>
+        <button onclick="downloadBackupToLocal()" id="downloadBtn" class="ml-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold" style="background:linear-gradient(135deg, #22c55e, #16a34a);">
+            <i class="fas fa-download mr-2"></i>PackageZIPDownload to ThisLoc，Please be patientEtcPending
+        </button>
+        <div id="backupProgress" class="hidden mt-4">
+            <div class="w-full h-3 rounded-full" style="background:rgba(0,0,0,0.3);">
+                <div id="bp" class="h-3 rounded-full transition-all" style="background:linear-gradient(90deg,var(--accent2),var(--accent)); width:0%;"></div>
+            </div>
+            <div class="flex justify-between items-center mt-1">
+                <div id="bpText" class="text-xs" style="color:var(--text-dim);">Preparing......</div>
+                <div id="bpPct" class="text-xs font-semibold" style="color:var(--accent);">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RestoreFeature -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-upload mr-2"></i>File LibraryRestore
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--text-dim);">
+            WillBackupIn folderHaveFileRestoreto system correspondingDepartment And TypeDown，First ensure system hasDepartment And TypeAndSame in folder。
+        </p>
+        <div class="mb-4">
+            <label class="block text-xs font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-folder mr-1"></i>SelectBackupFolder path
+            </label>
+            <div class="flex gap-2">
+                <input type="text" id="restorePath" readonly
+                       class="flex-1 px-4 py-2.5 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:var(--text); outline:none;"
+                       placeholder="Click button on right to selectBackup File">
+                <button onclick="openRestoreFolderBrowser()" class="tech-btn px-4 py-2.5 rounded-lg text-white text-sm">
+                    <i class="fas fa-folder-open mr-1"></i>Select folder
+                </button>
+            </div>
+            <div class="mt-2 text-xs p-2 rounded" style="background:rgba(0,212,255,0.08); color:var(--text-dim);">
+                <i class="fas fa-info-circle mr-1" style="color:var(--accent);"></i>
+                Select folderIn IncludeDMSBKPath，Such as <code style="color:var(--accent);">C:\Users\Username\Downloads\DMSBK_20260414_120000</code>
+            </div>
+            <div id="selectedFolderInfo" class="hidden mt-2 text-xs p-2 rounded" style="background:rgba(34,197,94,0.08); color:#4ade80;">
+                <i class="fas fa-check-circle mr-1"></i>Selected: <span id="selectedFolderName"></span>
+            </div>
+        </div>
+        <div class="mb-4 p-3 rounded-lg" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);">
+            <div class="text-xs" style="color:var(--text-dim);">
+                <strong style="color:#f87171;">Note：</strong>RestoreOperationWill Backup Files copied to system directory。Such asHaveFiles with the same name，Will directly overwrite，AlsoDoc AprDownApproval Workflow RecordsWill not beRestoreto system。
+            </div>
+        </div>
+<button onclick="runRestore()" id="restoreBtn" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold" style="background:rgba(234,179,8,0.8);">
+            <i class="fas fa-upload mr-2"></i>From serverRestore
+        </button>
+
+        <div id="restoreProgress" class="hidden mt-4">
+            <div class="w-full h-3 rounded-full" style="background:rgba(0,0,0,0.3);">
+                <div id="rp" class="h-3 rounded-full transition-all" style="background:linear-gradient(90deg,#fbbf24,#f97316); width:0%;"></div>
+            </div>
+            <div class="flex justify-between items-center mt-1">
+                <div id="rpText" class="text-xs" style="color:var(--text-dim);">Preparing......</div>
+                <div id="rpPct" class="text-xs font-semibold" style="color:#fbbf24;">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Index management -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-search mr-2"></i>Full-textSearch Index
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--text-dim);">
+            Full-text index is used forSearch File Content（PDF/DOCX/XLSX/PPTX/TXT）。Publish、Obsolete、 files restored,  willAutoUpdate index。For full rebuild，Click the button below。
+        </p>
+        <div class="flex items-center gap-4 mb-3">
+            <div id="indexStatus" class="text-sm" style="color:var(--text-dim);">
+                <i class="fas fa-spinner fa-spin mr-1"></i>NowAtSearch IndexStatus...
+            </div>
+        </div>
+        <button onclick="rebuildIndex()" id="rebuildBtn" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold" style="background:linear-gradient(135deg, #f59e0b, #d97706);">
+            <i class="fas fa-rotate mr-2"></i>Rebuild full-text index
+        </button>
+        <div id="rebuildProgress" class="hidden mt-4">
+            <div class="w-full h-3 rounded-full" style="background:rgba(0,0,0,0.3);">
+                <div id="rbp" class="h-3 rounded-full transition-all" style="background:linear-gradient(90deg,#f59e0b,#d97706); width:0%;"></div>
+            </div>
+            <div class="flex justify-between items-center mt-1">
+                <div id="rbpText" class="text-xs" style="color:var(--text-dim);">Now Rebuilding index...</div>
+                <div id="rbpPct" class="text-xs font-semibold" style="color:#fbbf24;">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PublishFile LibraryCleanup -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-broom mr-2"></i>PublishFile LibraryCleanup
+        </h2>
+        <p class="text-sm mb-4" style="color:var(--text-dim);">
+            Compare <code style="color:var(--accent);">published/</code> Actual files in directoryAndIn databasePublishRecords，Two-way cleanup of inconsistencies：
+        </p>
+        <ul class="text-xs space-y-1 mb-4" style="color:var(--text-dim); padding-left:1.2rem;">
+            <li><i class="fas fa-file-circle-minus mr-1" style="color:#f87171;"></i>Delete On diskHave In DB but not on diskHave<strong>Orphan files (in DB only)</strong></li>
+            <li><i class="fas fa-database-minus mr-1" style="color:#f87171;"></i>Delete In databaseHave On disk but not in DBHave<strong>Empty Records</strong>（Also clean corresponding full-text index）</li>
+            <li><i class="fas fa-folder-minus mr-1" style="color:#fbbf24;"></i>Auto Cleanup generates<strong>Empty directory</strong></li>
+        </ul>
+        <div class="mb-4 p-3 rounded-lg" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);">
+            <div class="text-xs" style="color:var(--text-dim);">
+                <strong style="color:#f87171;">⚠ Note：</strong>ThisOperationIrreversible，DeleteFileAndRecordsNo Restore。Recommended to run firstBackupAfter done, useThisFeature。
+            </div>
+        </div>
+        <div id="auditStatus" class="text-sm mb-3" style="color:var(--text-dim);">
+            <i class="fas fa-info-circle mr-1" style="color:var(--accent);"></i>Click button to start comparisonAndCleanup
+        </div>
+        <button onclick="runAuditPublished()" id="auditBtn" class="px-6 py-2.5 rounded-lg text-white text-sm font-semibold" style="background:linear-gradient(135deg, #ef4444, #dc2626);">
+            <i class="fas fa-broom mr-2"></i>Start cleanup
+        </button>
+        <div id="auditResult" class="hidden mt-4 p-4 rounded-lg" style="background:rgba(0,0,0,0.2); border:1px solid rgba(0,212,255,0.1);">
+        </div>
+    </div>
+</div>
+
+    
+        </div>
+    </div>
+
+    
+
+    <div id="backupResult" class="hidden mt-5 glass-card rounded-xl p-6">
+    <h3 class="text-base font-bold mb-3" style="color:var(--accent);">
+        <i class="fas fa-check-circle mr-2"></i>BackupResult
+    </h3>
+    <div id="backupResultContent" class="text-sm" style="color:var(--text-dim);"></div>
+</div>
+
+<!-- Folder browser popup - PlaceAtPageOutermost layerWithEnsure z-index Effective -->
+<div id="folderBrowserModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:99999; align-items:center; justify-content:center;">
+    <div id="folderBrowserDialog" style="background:#0f2340; border:1px solid rgba(0,212,255,0.3); border-radius:12px; width:600px; max-width:90vw; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.6); position:relative;">
+        <div id="folderBrowserHeader" style="padding:16px 20px; border-bottom:1px solid rgba(0,212,255,0.2); display:flex; justify-content:space-between; align-items:center; cursor:move; user-select:none;">
+            <div id="folderBrowserTitle" style="font-size:16px; font-weight:bold; color:var(--accent);">
+                <i class="fas fa-folder-open mr-2"></i>Select folder
+            </div>
+            <button onclick="closeFolderBrowser()" style="background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:18px; padding:4px;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div style="padding:12px 20px; border-bottom:1px solid rgba(0,212,255,0.1); background:rgba(0,0,0,0.2);">
+            <div style="font-size:12px; color:var(--text-dim); margin-bottom:6px;">Current position:</div>
+            <div id="currentBrowserPath" style="font-size:13px; color:var(--text); font-family:monospace; word-break:break-all;"></div>
+        </div>
+        <div id="folderBrowserContent" style="flex:1; overflow-y:auto; padding:8px 0; min-height:300px; max-height:400px;">
+            <!-- Folder list willAtRendered here -->
+        </div>
+        <div style="padding:16px 20px; border-top:1px solid rgba(0,212,255,0.2); display:flex; justify-content:space-between; align-items:center;">
+            <button onclick="loadParentDirectory()" id="upButton" style="padding:8px 16px; border-radius:6px; background:rgba(148,163,184,0.2); color:var(--text-dim); border:none; cursor:pointer; font-size:12px;">
+                <i class="fas fa-level-up-alt mr-1"></i>Parent directory
+            </button>
+            <div style="display:flex; gap:8px;">
+                <button onclick="closeFolderBrowser()" style="padding:8px 20px; border-radius:6px; background:rgba(239,68,68,0.2); color:#f87171; border:none; cursor:pointer; font-size:13px;">
+                    Cancel
+                </button>
+                <button onclick="confirmFolderSelection()" style="padding:8px 20px; border-radius:6px; background:linear-gradient(135deg, var(--accent2), var(--accent)); color:#fff; border:none; cursor:pointer; font-size:13px;">
+                    <i class="fas fa-check mr-1"></i>SelectThis File
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function runBackup() {
+    const btn = document.getElementById('backupBtn');
+    const prog = document.getElementById('backupProgress');
+    const bar = document.getElementById('bp');
+    const text = document.getElementById('bpText');
+    const backupPath = document.getElementById('backupPath').value.trim();
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>BackupIn ...';
+    prog.classList.remove('hidden');
+    text.textContent = 'Now GeneratingBackup File...';
+    bar.style.width = '30%';
+    document.getElementById('bpPct').textContent = '30%';
+
+    try {
+        const resp = await fetch('/api/backup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'backup', target_path: backupPath})
+        });
+        bar.style.width = '80%';
+        document.getElementById('bpPct').textContent = '80%';
+        text.textContent = 'PackageIn ...';
+        const data = await resp.json();
+        bar.style.width = '100%';
+        document.getElementById('bpPct').textContent = '100%';
+        text.textContent = 'Completed！';
+        const resultEl = document.getElementById('backupResult');
+        const contentEl = document.getElementById('backupResultContent');
+        resultEl.classList.remove('hidden');
+        if (data.success) {
+            contentEl.innerHTML = `<div style="color:#4ade80;"><i class="fas fa-check-circle mr-1"></i>${data.message}</div>
+                <div class="mt-2">Backup Path：<code style="color:var(--accent);">${data.path || ''}</code></div>
+                <div class="mt-1">File Library File：${data.files_count || 0}  items</div>
+                <div>Approval Record：${data.workflows_count || 0} </div>`;
+        } else {
+            contentEl.innerHTML = `<div style="color:#f87171;"><i class="fas fa-times-circle mr-1"></i>${data.message}</div>`;
+        }
+    } catch(e) {
+        alert('BackupFailed: ' + e);
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-download mr-2"></i>StartBackup';
+}
+
+async function runRestore() {
+    const path = document.getElementById('restorePath').value.trim();
+    if (!path) { alert('Please selectBackupFolder path'); return; }
+    if (!confirm('ConfirmNeed to fromThisPathRestoreData?？This will overwrite the existingHaveFile。')) return;
+    
+    const rp = document.getElementById('restoreProgress');
+    const rpBar = document.getElementById('rp');
+    const rpText = document.getElementById('rpText');
+    const rpPct = document.getElementById('rpPct');
+    const restoreBtn = document.getElementById('restoreBtn');
+    const resultEl = document.getElementById('backupResult');
+    const contentEl = document.getElementById('backupResultContent');
+    
+    if (rp) rp.classList.remove('hidden');
+    if (rpBar) rpBar.style.width = '0%';
+    if (rpText) rpText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>NowAtScan files...';
+    if (rpPct) rpPct.textContent = '0%';
+    if (restoreBtn) { restoreBtn.disabled = true; restoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>RestoreIn ...'; }
+    if (resultEl) resultEl.classList.add('hidden');
+    
+    // StartSSEProgress listener
+    let evtSource = null;
+    try { evtSource = new EventSource('/api/restore-stream'); } catch(e) {}
+    
+    if (evtSource) {
+        evtSource.onmessage = function(e) {
+            const msg = e.data;
+            if (msg.startsWith('waiting') || msg.startsWith('end') || !msg) return;
+            const parts = msg.split('|');
+            if (parts.length >= 3) {
+                const phase = parts[0];
+                const current = parseInt(parts[1]) || 0;
+                const total = parseInt(parts[2]) || 0;
+                const filename = parts[3] || '';
+                if (phase === 'done') {
+                    if (rpBar) rpBar.style.width = '100%';
+                    if (rpPct) rpPct.textContent = '100%';
+                    return;
+                }
+                if (rpBar) {
+                    const pct = total > 0 ? Math.round(current * 100 / total) : 0;
+                    rpBar.style.width = Math.min(pct, 98) + '%';
+                    if (rpPct) rpPct.textContent = pct + '%';
+                }
+                if (rpText) {
+                    if (filename) {
+                        rpText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>NowAtRestore: ' + current + '/' + total + ' - ' + filename;
+                    } else if (total > 0) {
+                        rpText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>NowAtScan files... ' + current + '/' + total;
+                    } else {
+                        rpText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>NowAtScan files...';
+                    }
+                }
+            }
+        };
+        evtSource.onerror = function() { evtSource.close(); };
+    }
+    
+    // ExecuteRestore
+    try {
+        const resp = await fetch('/api/backup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'restore', path})
+        });
+        const data = await resp.json();
+        if (evtSource) evtSource.close();
+        if (rpBar) rpBar.style.width = '100%';
+        if (rpPct) rpPct.textContent = '100%';
+        if (rpText) rpText.innerHTML = '<i class="fas fa-check-circle mr-2" style="color:#4ade80;"></i>Restore completed！';
+        
+        // ShowRestoreResult（DurationShow，User clicksOK afterClose）
+        if (resultEl && contentEl) {
+            resultEl.classList.remove('hidden');
+            if (data.success) {
+                contentEl.innerHTML = `<div style="color:#4ade80;"><i class="fas fa-check-circle mr-1"></i>${data.message || 'Restore completed'}</div>
+                    <div class="mt-2">New files：<strong>${data.restored || 0}</strong>  items</div>
+                    <div>Overwrite Update New：<strong>${data.updated || 0}</strong>  items</div>
+                    <div>Total：<strong>${data.total || 0}</strong>  items</div>
+                    <button onclick="confirmRestoreResult()" class="mt-3 px-4 py-2 rounded-lg text-white text-sm font-semibold" style="background:linear-gradient(135deg, #22c55e, #16a34a);">
+                        <i class="fas fa-check mr-1"></i>OK
+                    </button>`;
+            } else {
+                contentEl.innerHTML = `<div style="color:#f87171;"><i class="fas fa-times-circle mr-1"></i>${data.message}</div>
+                    <button onclick="confirmRestoreResult()" class="mt-3 px-4 py-2 rounded-lg text-white text-sm font-semibold" style="background:linear-gradient(135deg, #ef4444, #dc2626);">
+                        <i class="fas fa-check mr-1"></i>OK
+                    </button>`;
+            }
+        }
+        
+        // Not againAutoRefreshAndHide，EtcUser clicksOK
+    } catch(e) {
+        if (evtSource) evtSource.close();
+        if (rpBar) rpBar.style.width = '0%';
+        if (rpPct) rpPct.textContent = '';
+        if (rpText) rpText.innerHTML = '<i class="fas fa-times-circle mr-2" style="color:#f87171;"></i>Restore Failed';
+        if (resultEl) {
+            resultEl.classList.remove('hidden');
+            contentEl.innerHTML = `<div style="color:#f87171;"><i class="fas fa-times-circle mr-1"></i>Restore Failed: ${e.message}</div>`;
+        }
+        setTimeout(() => {
+            if (rp) rp.classList.add('hidden');
+            if (restoreBtn) { restoreBtn.disabled = false; restoreBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>StartRestore'; }
+        }, 3000);
+    }
+}
+
+function confirmRestoreResult() {
+    const resultEl = document.getElementById('backupResult');
+    const rp = document.getElementById('restoreProgress');
+    const restoreBtn = document.getElementById('restoreBtn');
+    if (resultEl) resultEl.classList.add('hidden');
+    if (rp) rp.classList.add('hidden');
+    if (restoreBtn) { restoreBtn.disabled = false; restoreBtn.innerHTML = '<i class="fas fa-upload mr-2"></i>StartRestore'; }
+    location.reload();
+}
+
+// Folder browser related variables
+let currentBrowserPath = '';
+let selectedBrowserPath = '';
+
+// Open folder browser
+function openBackupFolderBrowser() {
+    currentBrowserPath = '';
+    selectedBrowserPath = '';
+    document.getElementById('folderBrowserTitle').innerHTML = '<i class="fas fa-folder-open mr-2"></i>SelectBackupSave Position';
+    loadBrowserContent('');
+    document.getElementById('folderBrowserModal').style.display = 'flex';
+    document.getElementById('folderBrowserModal').dataset.mode = 'backup';
+}
+
+// CloseFolder browser
+function closeFolderBrowser() {
+    document.getElementById('folderBrowserModal').style.display = 'none';
+}
+
+// Loading browserContent
+async function loadBrowserContent(path) {
+    const contentDiv = document.getElementById('folderBrowserContent');
+    const pathDiv = document.getElementById('currentBrowserPath');
+    const upButton = document.getElementById('upButton');
+    
+    contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim);"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div>';
+    
+    try {
+        const resp = await fetch('/api/browse-folders?path=' + encodeURIComponent(path));
+        const data = await resp.json();
+        
+        if (!data.success) {
+            contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:#f87171;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.message || 'Loading Failed') + '</div>';
+            return;
+        }
+        
+        currentBrowserPath = data.current_path;
+        selectedBrowserPath = currentBrowserPath; // Default to current directory
+        pathDiv.textContent = currentBrowserPath || 'ThisComputer';
+        upButton.disabled = !data.parent_path;
+        upButton.style.opacity = data.parent_path ? '1' : '0.5';
+        upButton.onclick = data.parent_path ? function() { loadBrowserContent(data.parent_path); } : null;
+        
+        if (data.folders.length === 0) {
+            contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim);"><i class="fas fa-folder-open mr-2"></i>This File Is Empty</div>';
+            return;
+        }
+        
+        let html = '';
+        data.folders.forEach(function(folder) {
+            const icon = folder.type === 'drive' ? 'fa-hdd' : 'fa-folder';
+            const color = folder.type === 'drive' ? '#60a5fa' : 'var(--accent)';
+            html += '<div onclick="selectBrowserItem(this, \'' + folder.path.replace(/\\/g, '\\\\') + '\')" ondblclick="loadBrowserContent(\'' + folder.path.replace(/\\/g, '\\\\') + '\')" class="browser-item" style="padding:10px 20px; cursor:pointer; display:flex; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); transition:background 0.2s;" onmouseover="if(!this.classList.contains(\'selected\')) this.style.background=\'rgba(0,212,255,0.05)\'" onmouseout="if(!this.classList.contains(\'selected\')) this.style.background=\'transparent\'">';
+            html += '<i class="fas ' + icon + ' mr-3" style="color:' + color + '; font-size:18px;"></i>';
+            html += '<div style="flex:1;">';
+            html += '<div style="font-size:14px; color:var(--text);">' + folder.name + '</div>';
+            if (folder.type !== 'drive') {
+                html += '<div style="font-size:11px; color:var(--text-dim); opacity:0.7;">' + folder.path + '</div>';
+            }
+            html += '</div>';
+            html += '<i class="fas fa-chevron-right" style="color:var(--text-dim); opacity:0.3; font-size:12px;"></i>';
+            html += '</div>';
+        });
+        
+        contentDiv.innerHTML = html;
+    } catch(e) {
+        contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:#f87171;"><i class="fas fa-exclamation-circle mr-2"></i>Loading Failed: ' + e + '</div>';
+    }
+}
+
+// Select item in browser
+function selectBrowserItem(element, path) {
+    // RemoveItsSelectedStatus
+    document.querySelectorAll('.browser-item').forEach(function(item) {
+        item.classList.remove('selected');
+        item.style.background = 'transparent';
+    });
+    // AddSelectedStatus
+    element.classList.add('selected');
+    element.style.background = 'rgba(0,212,255,0.15)';
+    selectedBrowserPath = path;
+}
+
+// Load parent directory
+function loadParentDirectory() {
+    const modal = document.getElementById('folderBrowserModal');
+    const mode = modal.dataset.mode;
+    
+    if (mode === 'restore') {
+        // RestoreParent directory logicAt loadRestoreBrowserContent In Settings
+    } else {
+        // BackupParent directory logicAt loadBrowserContent In Settings
+    }
+}
+
+// ConfirmFolder selection
+function confirmFolderSelection() {
+    const modal = document.getElementById('folderBrowserModal');
+    const mode = modal.dataset.mode;
+    
+    if (mode === 'restore') {
+        // RestoreMode
+        if (restoreSelectedPath) {
+            document.getElementById('restorePath').value = restoreSelectedPath;
+            const folderName = restoreSelectedPath.split('\\').pop() || restoreSelectedPath;
+            document.getElementById('selectedFolderName').textContent = folderName;
+            document.getElementById('selectedFolderInfo').classList.remove('hidden');
+        }
+    } else {
+        // BackupMode
+        if (selectedBrowserPath) {
+            document.getElementById('backupPath').value = selectedBrowserPath;
+            document.getElementById('selectedBackupFolderName').textContent = selectedBrowserPath.split('\\').pop() || selectedBrowserPath;
+            document.getElementById('selectedBackupFolderInfo').classList.remove('hidden');
+        }
+    }
+    closeFolderBrowser();
+}
+
+// Clear selectionBackup File
+function clearBackupFolder() {
+    document.getElementById('backupPath').value = '';
+    document.getElementById('selectedBackupFolderInfo').classList.add('hidden');
+}
+
+// RestoreFunction folder browser
+let restoreBrowserPath = '';
+let restoreSelectedPath = '';
+
+function openRestoreFolderBrowser() {
+    restoreBrowserPath = '';
+    restoreSelectedPath = '';
+    document.getElementById('folderBrowserTitle').innerHTML = '<i class="fas fa-folder-open mr-2"></i>SelectBackup File';
+    loadRestoreBrowserContent('');
+    document.getElementById('folderBrowserModal').style.display = 'flex';
+    document.getElementById('folderBrowserModal').dataset.mode = 'restore';
+}
+
+async function loadRestoreBrowserContent(path) {
+    const contentDiv = document.getElementById('folderBrowserContent');
+    const pathDiv = document.getElementById('currentBrowserPath');
+    const upButton = document.getElementById('upButton');
+    
+    contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim);"><i class="fas fa-spinner fa-spin mr-2"></i>Loading...</div>';
+    
+    try {
+        const resp = await fetch('/api/browse-folders?path=' + encodeURIComponent(path));
+        const data = await resp.json();
+        
+        if (!data.success) {
+            contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:#f87171;"><i class="fas fa-exclamation-circle mr-2"></i>' + (data.message || 'Loading Failed') + '</div>';
+            return;
+        }
+        
+        restoreBrowserPath = data.current_path;
+        restoreSelectedPath = restoreBrowserPath;
+        pathDiv.textContent = restoreBrowserPath || 'ThisComputer';
+        upButton.disabled = !data.parent_path;
+        upButton.style.opacity = data.parent_path ? '1' : '0.5';
+        upButton.onclick = data.parent_path ? function() { loadRestoreBrowserContent(data.parent_path); } : null;
+        
+        if (data.folders.length === 0) {
+            contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:var(--text-dim);"><i class="fas fa-folder-open mr-2"></i>This File Is Empty</div>';
+            return;
+        }
+        
+        let html = '';
+        data.folders.forEach(function(folder) {
+            const icon = folder.type === 'drive' ? 'fa-hdd' : 'fa-folder';
+            const color = folder.type === 'drive' ? '#60a5fa' : 'var(--accent)';
+            // HighlightDMSBKFile
+            const isDMSBK = folder.name.startsWith('DMSBK_');
+            const highlightStyle = isDMSBK ? 'background:rgba(34,197,94,0.1);' : '';
+            const badge = isDMSBK ? '<span style="margin-left:8px;padding:2px 8px;background:rgba(34,197,94,0.3);color:#4ade80;border-radius:4px;font-size:10px;">Backup</span>' : '';
+            
+            html += '<div onclick="selectRestoreBrowserItem(this, \'' + folder.path.replace(/\\/g, '\\\\') + '\')" ondblclick="loadRestoreBrowserContent(\'' + folder.path.replace(/\\/g, '\\\\') + '\')" class="restore-browser-item" style="padding:10px 20px; cursor:pointer; display:flex; align-items:center; border-bottom:1px solid rgba(255,255,255,0.05); transition:background 0.2s; ' + highlightStyle + '" onmouseover="if(!this.classList.contains(\'selected\')) this.style.background=\'rgba(0,212,255,0.05)\'" onmouseout="if(!this.classList.contains(\'selected\')) this.style.background=\'transparent\'">';
+            html += '<i class="fas ' + icon + ' mr-3" style="color:' + color + '; font-size:18px;"></i>';
+            html += '<div style="flex:1;">';
+            html += '<div style="font-size:14px; color:var(--text);">' + folder.name + badge + '</div>';
+            if (folder.type !== 'drive') {
+                html += '<div style="font-size:11px; color:var(--text-dim); opacity:0.7;">' + folder.path + '</div>';
+            }
+            html += '</div>';
+            html += '<i class="fas fa-chevron-right" style="color:var(--text-dim); opacity:0.3; font-size:12px;"></i>';
+            html += '</div>';
+        });
+        
+        contentDiv.innerHTML = html;
+    } catch(e) {
+        contentDiv.innerHTML = '<div style="padding:40px; text-align:center; color:#f87171;"><i class="fas fa-exclamation-circle mr-2"></i>Loading Failed: ' + e + '</div>';
+    }
+}
+
+function selectRestoreBrowserItem(element, path) {
+    document.querySelectorAll('.restore-browser-item').forEach(function(item) {
+        item.classList.remove('selected');
+        item.style.background = 'transparent';
+    });
+    element.classList.add('selected');
+    element.style.background = 'rgba(0,212,255,0.15)';
+    restoreSelectedPath = path;
+}
+
+function browseRestorePath() {
+    // Mode1：Through backendAPIScanDownloadsDownDMSBKFile
+    fetch('/api/backup/list-dmsbk')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.folders.length > 0) {
+                // ShowFolder selection popup
+                let html = '<div style="max-height:300px;overflow-y:auto;">';
+                data.folders.forEach(function(f) {
+                    html += '<div onclick="selectRestorePath(\'' + f.path.replace(/\\/g, '\\\\') + '\')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;color:var(--text-dim);" onmouseover="this.style.background=\'rgba(0,212,255,0.1)\'" onmouseout="this.style.background=\'transparent\'">';
+                    html += '<i class="fas fa-folder mr-2" style="color:var(--accent);"></i>' + f.name;
+                    html += '<span style="float:right;font-size:11px;">' + f.date + '</span></div>';
+                });
+                html += '</div>';
+                html += '<div style="margin-top:12px;padding-top:8px;border-top:1px solid rgba(0,212,255,0.2);">';
+                html += '<button onclick="manualInputPath()" style="padding:6px 16px;border-radius:6px;background:rgba(148,163,184,0.2);color:var(--text-dim);border:none;cursor:pointer;font-size:12px;">';
+                html += '<i class="fas fa-keyboard mr-1"></i>Manually input path</button></div>';
+                showFolderPicker(html);
+            } else {
+                // Not HaveFoundDMSBKFile，Manual input
+                manualInputPath();
+            }
+        })
+        .catch(() => manualInputPath());
+}
+
+function showFolderPicker(html, mode) {
+    let picker = document.getElementById('folderPicker');
+    if (!picker) {
+        picker = document.createElement('div');
+        picker.id = 'folderPicker';
+        picker.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#0f2340;border:1px solid rgba(0,212,255,0.3);border-radius:12px;padding:20px;min-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.6);';
+        document.body.appendChild(picker);
+    }
+    const title = mode === 'backup' ? 'SelectBackupSave Position' : 'SelectBackup File';
+    picker.innerHTML = '<div style="font-size:14px;font-weight:bold;color:var(--accent);margin-bottom:12px;"><i class="fas fa-folder-open mr-2"></i>' + title + '</div>' + html;
+    picker.style.display = 'block';
+    // Click outsideClose
+    setTimeout(function() {
+        document.addEventListener('click', function handler(e) {
+            if (!picker.contains(e.target)) {
+                picker.style.display = 'none';
+                document.removeEventListener('click', handler);
+            }
+        });
+    }, 100);
+}
+
+function selectRestorePath(path) {
+    document.getElementById('restorePath').value = path;
+    document.getElementById('folderPicker').style.display = 'none';
+}
+
+function manualInputPath() {
+    const path = prompt('Please enterBackupFolder path:\nSuch as：C:\\Users\\Administrator\\Downloads\\DMSBK_20260414_120000');
+    if (path) document.getElementById('restorePath').value = path;
+}
+
+// Clear selectionBackup File
+function clearBackupFolder() {
+    document.getElementById('backupPath').value = '';
+    document.getElementById('selectedBackupFolderInfo').classList.add('hidden');
+}
+
+// DownloadBackup to ThisLoc
+async function downloadBackupToLocal() {
+    const btn = document.getElementById('downloadBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating......';
+    
+    try {
+        // Direct navigate toDownloadAPI，BrowseToolWill popupSaveDialog
+        window.location.href = '/api/backup-download';
+        btn.innerHTML = '<i class="fas fa-check mr-2"></i>TriggeredDownload';
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download mr-2"></i>Download to ThisLoc';
+        }, 3000);
+    } catch(e) {
+        alert('DownloadFailed: ' + e);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download mr-2"></i>Download to ThisLoc';
+    }
+}
+
+// ========== Full-textIndex management ==========
+async function loadIndexStatus() {
+    const el = document.getElementById('indexStatus');
+    try {
+        const r = await fetch('/api/index/status');
+        const data = await r.json();
+        if (data.error) {
+            el.innerHTML = '<i class="fas fa-exclamation-circle mr-1" style="color:#f87171;"></i><span style="color:#f87171;">' + data.error + '</span>';
+        } else {
+            const cnt = data.total_files || 0;
+            const ts = data.last_index_time || 'Unknown';
+            el.innerHTML = '<i class="fas fa-check-circle mr-1" style="color:#4ade80;"></i>Indexed <b style="color:var(--accent);">' + cnt + '</b>  files，Last build: ' + ts + '，Total ' + (data.total_keywords || 0) + '  keywords';
+        }
+    } catch(e) {
+        el.innerHTML = '<i class="fas fa-exclamation-circle mr-1" style="color:#f87171;"></i><span style="color:#f87171;">Search Failed</span>';
+    }
+}
+
+async function rebuildIndex() {
+    const btn = document.getElementById('rebuildBtn');
+    const prog = document.getElementById('rebuildProgress');
+    const txt = document.getElementById('rbpText');
+    const bar = document.getElementById('rbp');
+    const pct = document.getElementById('rbpPct');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Rebuilding......';
+    prog.classList.remove('hidden');
+    bar.style.width = '10%';
+    txt.textContent = 'NowAtStart index building（Run in background）...';
+    txt.style.color = 'var(--text-dim)';
+    pct.textContent = '';
+    try {
+        const r = await fetch('/api/index/build', { method: 'POST' });
+        const data = await r.json();
+        if (data.success) {
+            // Poll for progress
+            let pollCount = 0;
+            let pollingStarted = true;
+            const pollInterval = setInterval(async () => {
+                try {
+                    const rp = await fetch('/api/index/progress');
+                    const prog = await rp.json();
+                    if (prog.status === 'running') {
+                        const percent = prog.total > 0 ? Math.round(prog.indexed / prog.total * 100) : 10;
+                        bar.style.width = percent + '%';
+                        txt.textContent = prog.message || 'Now Rebuilding index...';
+                        pct.textContent = percent + '%';
+                    } else if (prog.status === 'done') {
+                        clearInterval(pollInterval);
+                        bar.style.width = '100%';
+                        txt.textContent = prog.message || 'Index rebuild completed';
+                        txt.style.color = '#4ade80';
+                        pct.textContent = '100%';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check mr-2"></i>RebuildCompleted';
+                        setTimeout(loadIndexStatus, 2000);
+                    } else if (prog.status === 'error') {
+                        clearInterval(pollInterval);
+                        txt.textContent = prog.message || 'Index rebuildFailed';
+                        txt.style.color = '#f87171';
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-rotate mr-2"></i>Rebuild full-text index';
+                    } else {
+                        // idle or unknown - just wait
+                        pollCount++;
+                        if (pollCount > 20) { // Timeout 60  seconds
+                            clearInterval(pollInterval);
+                            txt.textContent = 'Index rebuild timeout';
+                            btn.disabled = false;
+                        }
+                    }
+                } catch(e) {
+                    pollCount++;
+                    if (pollCount > 20) {
+                        clearInterval(pollInterval);
+                        txt.textContent = 'SearchProgressFailed';
+                        btn.disabled = false;
+                    }
+                }
+            }, 3000);
+        } else {
+            txt.textContent = 'BuildFailed: ' + (data.message || 'UnknownError');
+            txt.style.color = '#f87171';
+        }
+    } catch(e) {
+        txt.textContent = 'Request Failed: ' + e.message;
+        txt.style.color = '#f87171';
+    } finally {
+        if (!pollingStarted) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rotate mr-2"></i>Rebuild full-text index';
+        }
+    }
+}
+
+// PageWhen loadingSearch IndexStatus
+loadIndexStatus();
+
+// ========== Modal window drag function ==========
+(function() {
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    
+    const header = document.getElementById('folderBrowserHeader');
+    const dialog = document.getElementById('folderBrowserDialog');
+    
+    if (header && dialog) {
+        header.addEventListener('mousedown', function(e) {
+            // Left click only
+            if (e.button !== 0) return;
+            // Do not dragCloseButton
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+            
+            isDragging = true;
+            const rect = dialog.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            
+            // Settings dialog ForAbsolute positioning
+            dialog.style.position = 'fixed';
+            dialog.style.left = rect.left + 'px';
+            dialog.style.top = rect.top + 'px';
+            dialog.style.margin = '0';
+            dialog.style.transform = 'none';
+            
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            
+            const newLeft = e.clientX - dragOffsetX;
+            const newTop = e.clientY - dragOffsetY;
+            
+            // Boundary limit
+            const maxLeft = window.innerWidth - dialog.offsetWidth;
+            const maxTop = window.innerHeight - dialog.offsetHeight;
+            
+            dialog.style.left = Math.max(0, Math.min(newLeft, maxLeft)) + 'px';
+            dialog.style.top = Math.max(0, Math.min(newTop, maxTop)) + 'px';
+        });
+        
+        document.addEventListener('mouseup', function(e) {
+            isDragging = false;
+        });
+        
+        // ResetPosition（When opening）
+        const originalOpenBackup = window.openBackupFolderBrowser;
+        window.openBackupFolderBrowser = function() {
+            // FirstReset dialog Position
+            dialog.style.position = '';
+            dialog.style.left = '';
+            dialog.style.top = '';
+            dialog.style.margin = '';
+            dialog.style.transform = '';
+            originalOpenBackup();
+        };
+        
+        const originalOpenRestore = window.openRestoreFolderBrowser;
+        window.openRestoreFolderBrowser = function() {
+            dialog.style.position = '';
+            dialog.style.left = '';
+            dialog.style.top = '';
+            dialog.style.margin = '';
+            dialog.style.transform = '';
+            originalOpenRestore();
+        };
+    }
+})();
+// ========== PublishFile LibraryCleanup ==========
+async function runAuditPublished() {
+    const btn = document.getElementById('auditBtn');
+    const statusEl = document.getElementById('auditStatus');
+    const resultEl = document.getElementById('auditResult');
+
+    if (!confirm('ConfirmTo executePublishFile LibraryStart cleanup?？\n\nThisOperationWillDelete：\n1. On diskAtIn DB but not on diskHaveFile\n2. In databaseAtOn disk but not in DBHaveRecordsAndIndex\n\nRecommended to run firstBackup！')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>NowAtCleanup...';
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin mr-1" style="color:var(--accent);"></i>NowAtCompare with disk filesAndDatabaseRecords...';
+    resultEl.classList.add('hidden');
+
+    try {
+        const resp = await fetch('/api/files/audit-published', { method: 'POST' });
+        const data = await resp.json();
+
+        if (data.success) {
+            statusEl.innerHTML = '<i class="fas fa-check-circle mr-1" style="color:#4ade80;"></i>Cleanup completed！';
+
+            let html = '<div class="text-sm" style="color:var(--text);">';
+            html += '<div class="grid grid-cols-2 gap-3 mb-4">';
+            html += '<div class="p-3 rounded-lg" style="background:rgba(0,0,0,0.2);">';
+            html += '<div class="text-xs" style="color:var(--text-dim);">Before cleanup</div>';
+            html += '<div class="text-lg font-bold" style="color:var(--accent);">Disk ' + data.original_disk_count + ' / Database ' + data.original_db_count + '</div>';
+            html += '</div>';
+            html += '<div class="p-3 rounded-lg" style="background:rgba(0,0,0,0.2);">';
+            html += '<div class="text-xs" style="color:var(--text-dim);">After cleanup</div>';
+            html += '<div class="text-lg font-bold" style="color:#4ade80;">Disk ' + data.final_disk_count + ' / Database ' + data.final_db_count + '</div>';
+            html += '</div></div>';
+
+            const orphanCount = data.orphan_files_deleted;
+            const ghostCount = data.ghost_records_deleted;
+            const dirCount = data.empty_dirs_cleaned;
+
+            if (orphanCount === 0 && ghostCount === 0) {
+                html += '<div class="p-3 rounded-lg mb-3" style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.2);">';
+                html += '<i class="fas fa-check-circle mr-1" style="color:#4ade80;"></i><span style="color:#4ade80;">File Library Status Consistent，No Needs cleanup。</span></div>';
+            } else {
+                if (orphanCount > 0) {
+                    html += '<div class="p-3 rounded-lg mb-2" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);">';
+                    html += '<div class="font-medium text-sm" style="color:#f87171;"><i class="fas fa-file-circle-minus mr-1"></i>Deleted Orphan files: ' + orphanCount + '  items</div>';
+                    if (data.details.deleted_files && data.details.deleted_files.length > 0) {
+                        html += '<div class="mt-1 text-xs" style="color:var(--text-dim); max-height:120px; overflow-y:auto;">';
+                        data.details.deleted_files.forEach(function(f) {
+                            html += '<div>' + (f.error ? '<span style="color:#f87171;">Failed</span> ' : '') + f.filename + '</div>';
+                        });
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+                if (ghostCount > 0) {
+                    html += '<div class="p-3 rounded-lg mb-2" style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);">';
+                    html += '<div class="font-medium text-sm" style="color:#f87171;"><i class="fas fa-database-minus mr-1"></i>Deleted Ghost Records: ' + ghostCount + ' </div>';
+                    if (data.details.deleted_records && data.details.deleted_records.length > 0) {
+                        html += '<div class="mt-1 text-xs" style="color:var(--text-dim); max-height:120px; overflow-y:auto;">';
+                        data.details.deleted_records.forEach(function(r) {
+                            html += '<div>' + (r.error ? '<span style="color:#f87171;">Failed</span> ' : '') + (r.original_name || r.filename) + '</div>';
+                        });
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+                if (dirCount > 0) {
+                    html += '<div class="p-3 rounded-lg mb-2" style="background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.2);">';
+                    html += '<div class="font-medium text-sm" style="color:#fbbf24;"><i class="fas fa-folder-minus mr-1"></i>Empty directories cleaned: ' + dirCount + '  items</div></div>';
+                }
+            }
+
+            if (data.final_disk_count === data.final_db_count) {
+                html += '<div class="mt-3 p-3 rounded-lg" style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.2);">';
+                html += '<i class="fas fa-check-double mr-1" style="color:#4ade80;"></i><span style="color:#4ade80;">Cleanup completed，Disk File And Database Records Data is identical。</span></div>';
+            }
+
+            html += '</div>';
+            resultEl.innerHTML = html;
+            resultEl.classList.remove('hidden');
+
+            // RefreshIndexStatus
+            setTimeout(loadIndexStatus, 1000);
+        } else {
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle mr-1" style="color:#f87171;"></i><span style="color:#f87171;">Cleanup Failed</span>';
+        }
+    } catch(e) {
+        statusEl.innerHTML = '<i class="fas fa-exclamation-circle mr-1" style="color:#f87171;"></i><span style="color:#f87171;">Request Failed: ' + e.message + '</span>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-broom mr-2"></i>Start cleanup';
+    }
+}
+
+</script>
+{% endblock %}

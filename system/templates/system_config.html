@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-5 flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-cog mr-2"></i>System config
+    </h1>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- System notice -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-bullhorn mr-2"></i>System notice
+        </h2>
+        <textarea id="annContent" rows="5"
+                  class="w-full px-4 py-3 rounded-lg text-sm resize-none mb-4"
+                  style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;"
+                  placeholder="Input Here system noticeContent，Save afterWill Show At Main Page Notice area">{{ announcement.content if announcement else '' }}</textarea>
+        <button onclick="saveAnnouncement()" class="tech-btn px-5 py-2.5 rounded-lg text-white text-sm font-semibold">
+            <i class="fas fa-save mr-2"></i>SaveNotice
+        </button>
+    </div>
+
+    <!-- SystemVersionThis -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-code mr-2"></i>VersionThisInformation
+        </h2>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 rounded-lg" style="background:rgba(0,0,0,0.2);">
+                <div>
+                    <div class="text-sm font-medium">Current versionThis</div>
+                    <div class="text-2xl font-bold font-tech mt-1" style="color:var(--accent);">{{ system_version }}</div>
+                </div>
+                <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:rgba(0,212,255,0.1);">
+                    <i class="fas fa-sync-alt" style="color:var(--accent);"></i>
+                </div>
+            </div>
+            <div class="text-xs p-3 rounded-lg" style="background:rgba(234,179,8,0.1); border:1px solid rgba(234,179,8,0.2); color:#fbbf24;">
+                <i class="fas fa-info-circle mr-1"></i>
+                VersionThisUpgradeFeatureWillAtLaterVersionThisIn OpenPlace，Please Regular manualBackupData。
+            </div>
+        </div>
+    </div>
+
+    <!-- FileListRefresh（Admin only） -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-sync-alt mr-2"></i>FileList management
+        </h2>
+        <div class="text-sm mb-4 p-3 rounded-lg" style="background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);color:var(--text-dim);">
+            <i class="fas fa-info-circle mr-1" style="color:var(--accent);"></i>
+            Clean physicalFile Already DeletedBut DB still hasRecords。SystemPer  timeWhen restartingAutoExecute once time。
+        </div>
+        <button onclick="refreshFileList()" id="refreshBtn"
+                class="tech-btn px-5 py-2.5 rounded-lg text-white text-sm font-semibold">
+            <i class="fas fa-sync-alt mr-2"></i>RefreshFileList
+        </button>
+        <div id="refreshMsg" class="mt-3 text-sm" style="display:none;"></div>
+    </div>
+
+    <!-- Scheduled index task -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-clock mr-2"></i>Scheduled index task
+        </h2>
+        <div class="mb-4">
+            <div class="flex items-center justify-between p-4 rounded-lg mb-3" style="background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.15);">
+                <div>
+                    <div class="text-sm font-medium">Per Sunday Auto Update New Full-text index</div>
+                    <div class="text-xs mt-1" style="color:var(--text-dim);">Execute Time：Per Sunday 03:00，Auto Rebuild Published File Library Has File Full-text index</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="weeklyIndexEnabled" class="sr-only peer" onchange="saveSchedulerConfig()">
+                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </label>
+            </div>
+            <div id="schedulerStatus" class="text-xs p-2 rounded" style="display:none;"></div>
+        </div>
+        <div class="flex items-center justify-between p-4 rounded-lg mb-3" style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);">
+            <div>
+                <div class="text-sm font-medium">Per Sunday morning1Click to cleanPreview Cache</div>
+                <div class="text-xs mt-1" style="color:var(--text-dim);">Auto Delete Exceeds7Days LibreOffice Convert PDF Cache File，Disk Cleanup Interval</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="weeklyCleanupEnabled" class="sr-only peer" onchange="saveSchedulerConfig()">
+                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+            </label>
+        </div>
+    </div>
+
+    <!-- SMTPEmail config -->
+    <div class="glass-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold" style="color:var(--accent);">
+                <i class="fas fa-envelope mr-2"></i>SMTPEmail config
+            </h2>
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="smtpEnabled" class="rounded" style="accent-color:var(--accent);">
+                <span class="text-sm" style="color:var(--text-dim);">Enable Email Notification</span>
+            </label>
+        </div>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+                <label class="block text-xs mb-1.5" style="color:var(--text-dim);">SMTP Server</label>
+                <input type="text" id="smtpHost" placeholder="smtp.qq.com"
+                       class="w-full px-3 py-2 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div>
+                <label class="block text-xs mb-1.5" style="color:var(--text-dim);">Port</label>
+                <input type="number" id="smtpPort" placeholder="587"
+                       class="w-full px-3 py-2 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div>
+                <label class="block text-xs mb-1.5" style="color:var(--text-dim);">Username</label>
+                <input type="text" id="smtpUser" placeholder="your@email.com"
+                       class="w-full px-3 py-2 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div>
+                <label class="block text-xs mb-1.5" style="color:var(--text-dim);">Password/Authorization code</label>
+                <input type="password" id="smtpPass" placeholder="Fill inSMTPAuthorization code"
+                       class="w-full px-3 py-2 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+            <div class="col-span-2">
+                <label class="block text-xs mb-1.5" style="color:var(--text-dim);">Sender Address</label>
+                <input type="text" id="smtpFrom" placeholder="DMS@yourcompany.com"
+                       class="w-full px-3 py-2 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+            </div>
+        </div>
+        <div class="flex items-center gap-2 mb-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="smtpTLS" checked class="rounded" style="accent-color:var(--accent);">
+                <span class="text-xs" style="color:var(--text-dim);">EnableTLSEncrypt</span>
+            </label>
+        </div>
+        <div class="text-xs mb-4 p-3 rounded-lg" style="background:rgba(234,179,8,0.08); border:1px solid rgba(234,179,8,0.15); color:var(--text-dim);">
+            <i class="fas fa-info-circle mr-1" style="color:#fbbf24;"></i>
+            QQEmail/163EmailPlease Use authorization code instead ofLoginPassword。EnterpriseEmailCan use directlyPassword。
+        </div>
+
+        <!-- Test Email -->
+        <div class="mb-4 p-4 rounded-lg" style="background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.12);">
+            <div class="text-xs font-semibold mb-3" style="color:var(--accent);">
+                <i class="fas fa-paper-plane mr-1"></i>Send Test Email
+            </div>
+            <div class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs mb-1.5" style="color:var(--text-dim);">Test recipientEmail</label>
+                    <input type="email" id="testEmail" placeholder="test@example.com"
+                           class="w-full px-3 py-2 rounded-lg text-sm"
+                           style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                </div>
+                <button onclick="sendTestEmail()" id="testEmailBtn"
+                        class="tech-btn px-5 py-2.5 rounded-lg text-white text-sm font-semibold whitespace-nowrap">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Test Email
+                </button>
+            </div>
+            <div id="testEmailMsg" class="mt-2 text-xs hidden"></div>
+        </div>
+
+        <button onclick="saveSMTP()" class="tech-btn px-5 py-2.5 rounded-lg text-white text-sm font-semibold">
+            <i class="fas fa-save mr-2"></i>SaveConfig
+        </button>
+    </div>
+
+    <!-- Company LogoSettings -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-image mr-2"></i>Company LogoSettings
+        </h2>
+        <div id="logoPreview" class="mb-4 p-6 rounded-lg flex items-center justify-center" style="background:rgba(0,0,0,0.2); min-height:300px;">
+            <div id="logoPlaceholder" class="text-center" style="color:var(--text-dim);">
+                <i class="fas fa-image text-4xl mb-2 opacity-30"></i>
+                <div class="text-sm">No No Logo</div>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <label class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold cursor-pointer">
+                <i class="fas fa-upload mr-2"></i>UploadLogo
+                <input type="file" accept="image/*" class="hidden" onchange="uploadLogo(this)">
+            </label>
+            <button onclick="deleteLogo()" id="delLogoBtn" class="px-4 py-2 rounded-lg text-sm" style="background:rgba(239,68,68,0.1); color:#f87171; border:1px solid rgba(239,68,68,0.2);">
+                <i class="fas fa-trash-alt mr-1"></i>Delete
+            </button>
+        </div>
+    </div>
+
+    <!-- Login PageTitleSettings -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-heading mr-2"></i>Login PageTitleSettings
+        </h2>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm mb-2" style="color:var(--text);">System Name（Show At Login Page Below）</label>
+                <input type="text" id="loginTitle" placeholder="Such as：Tech companyFile Management System"
+                       class="w-full px-4 py-3 rounded-lg text-sm"
+                       style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:var(--text);">
+            </div>
+            <button onclick="saveLoginTitle()" class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold">
+                <i class="fas fa-save mr-2"></i>SaveTitle
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick entry -->
+    <div class="glass-card rounded-xl p-6">
+        <h2 class="text-base font-bold mb-4" style="color:var(--accent);">
+            <i class="fas fa-link mr-2"></i>Quick management entry
+        </h2>
+        <div class="grid grid-cols-2 gap-3">
+            <a href="{{ url_for('dept_type_manage') }}" class="p-4 rounded-lg text-center transition-all hover:scale-[1.02]" style="background:rgba(0,0,0,0.2);">
+                <i class="fas fa-building text-xl mb-2" style="color:var(--accent);"></i>
+                <div class="text-sm">Department And Type</div>
+            </a>
+            <a href="{{ url_for('users') }}" class="p-4 rounded-lg text-center transition-all hover:scale-[1.02]" style="background:rgba(0,0,0,0.2);">
+                <i class="fas fa-users text-xl mb-2" style="color:var(--accent);"></i>
+                <div class="text-sm">User Management</div>
+            </a>
+            <a href="{{ url_for('backup_page') }}" class="p-4 rounded-lg text-center transition-all hover:scale-[1.02]" style="background:rgba(0,0,0,0.2);">
+                <i class="fas fa-database text-xl mb-2" style="color:var(--accent);"></i>
+                <div class="text-sm">Data Backup</div>
+            </a>
+            <a href="{{ url_for('operation_logs') }}" class="p-4 rounded-lg text-center transition-all hover:scale-[1.02]" style="background:rgba(0,0,0,0.2);">
+                <i class="fas fa-clipboard-list text-xl mb-2" style="color:var(--accent);"></i>
+                <div class="text-sm">Operation Log</div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+async function saveAnnouncement() {
+    const content = document.getElementById('annContent').value;
+    const resp = await fetch('/api/announcement', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({content})
+    });
+    const data = await resp.json();
+    alert(data.message);
+}
+
+async function loadSMTP() {
+    try {
+        const data = await fetch('/api/smtp').then(r => r.json());
+        if (data.host) {
+            document.getElementById('smtpEnabled').checked = !!data.enabled;
+            document.getElementById('smtpHost').value = data.host || '';
+            document.getElementById('smtpPort').value = data.port || '587';
+            document.getElementById('smtpUser').value = data.username || '';
+            document.getElementById('smtpFrom').value = data.from_addr || '';
+            document.getElementById('smtpTLS').checked = data.use_tls !== false;
+        }
+    } catch(e) {}
+}
+
+async function saveSMTP() {
+    const data = {
+        enabled: document.getElementById('smtpEnabled').checked,
+        host: document.getElementById('smtpHost').value.trim(),
+        port: parseInt(document.getElementById('smtpPort').value) || 587,
+        username: document.getElementById('smtpUser').value.trim(),
+        password: document.getElementById('smtpPass').value,
+        from_addr: document.getElementById('smtpFrom').value.trim(),
+        use_tls: document.getElementById('smtpTLS').checked,
+    };
+    if (!data.host) { alert('Please Fill inSMTP ServerAddress'); return; }
+    const resp = await fetch('/api/smtp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    });
+    const result = await resp.json();
+    alert(result.message);
+}
+
+async function sendTestEmail() {
+    const testEmail = document.getElementById('testEmail').value.trim();
+    const btn = document.getElementById('testEmailBtn');
+    const msgEl = document.getElementById('testEmailMsg');
+    if (!testEmail || !testEmail.includes('@')) {
+        msgEl.style.display = '';
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = 'Please enterHaveEffectEmail Address';
+        return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>SendIn ...';
+    msgEl.style.display = 'none';
+    try {
+        const resp = await fetch('/api/smtp/test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({test_email: testEmail})
+        });
+        const data = await resp.json();
+        msgEl.style.display = '';
+        if (data.success) {
+            msgEl.style.color = '#4ade80';
+            msgEl.textContent = '✓ ' + data.message;
+        } else {
+            msgEl.style.color = '#f87171';
+            msgEl.textContent = '✗ ' + data.message;
+        }
+    } catch(e) {
+        msgEl.style.display = '';
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = 'SendFailed：' + e.message;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Send Test Email';
+}
+
+// Login PageTitleSettings
+async function loadLoginTitle() {
+    try {
+        const data = await fetch('/api/login-title').then(r => r.json());
+        if (data.title) {
+            document.getElementById('loginTitle').value = data.title;
+        }
+    } catch(e) {}
+}
+
+async function saveLoginTitle() {
+    const title = document.getElementById('loginTitle').value.trim();
+    const resp = await fetch('/api/login-title', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title})
+    });
+    const result = await resp.json();
+    alert(result.message);
+}
+
+// FileListRefresh
+async function refreshFileList() {
+    var btn = document.getElementById('refreshBtn');
+    var msg = document.getElementById('refreshMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>RefreshIn ...';
+    msg.style.display = 'none';
+    try {
+        var resp = await fetch('/api/file-list/refresh');
+        var data = await resp.json();
+        msg.style.display = '';
+        msg.style.color = data.success ? '#4ade80' : '#f87171';
+        msg.textContent = data.message;
+    } catch(e) {
+        msg.style.display = '';
+        msg.style.color = '#f87171';
+        msg.textContent = 'Refresh Failed: ' + e.message;
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>RefreshFileList';
+}
+
+async function loadSchedulerConfig() {
+    try {
+        const data = await fetch('/api/scheduler-config').then(r => r.json());
+        document.getElementById('weeklyIndexEnabled').checked = !!data.weekly_index_enabled;
+        document.getElementById('weeklyCleanupEnabled').checked = !!data.weekly_cleanup_enabled;
+        const status = document.getElementById('schedulerStatus');
+        status.style.display = '';
+        if (data.weekly_index_enabled) {
+            status.style.background = 'rgba(74,222,128,0.08)';
+            status.style.border = '1px solid rgba(74,222,128,0.2)';
+            status.style.color = '#4ade80';
+            status.textContent = '✓ Scheduled taskAlreadyEnable';
+        } else {
+            status.style.background = 'rgba(239,68,68,0.06)';
+            status.style.border = '1px solid rgba(239,68,68,0.15)';
+            status.style.color = '#f87171';
+            status.textContent = '○ Scheduled taskAlreadyClose';
+        }
+    } catch(e) {
+        console.error('LoadingScheduled task configFailed:', e);
+    }
+}
+
+async function saveSchedulerConfig() {
+    const enabled = document.getElementById('weeklyIndexEnabled').checked;
+    const cleanupEnabled = document.getElementById('weeklyCleanupEnabled').checked;
+    const status = document.getElementById('schedulerStatus');
+    try {
+        const resp = await fetch('/api/scheduler-config', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({weekly_index_enabled: enabled, weekly_cleanup_enabled: cleanupEnabled})
+        });
+        const result = await resp.json();
+        if (result.success) {
+            status.style.display = '';
+            if (enabled) {
+                status.style.background = 'rgba(74,222,128,0.08)';
+                status.style.border = '1px solid rgba(74,222,128,0.2)';
+                status.style.color = '#4ade80';
+                status.textContent = '✓ Scheduled taskAlreadyEnable';
+            } else {
+                status.style.background = 'rgba(239,68,68,0.06)';
+                status.style.border = '1px solid rgba(239,68,68,0.15)';
+                status.style.color = '#f87171';
+                status.textContent = '○ Scheduled taskAlreadyClose';
+            }
+            alert(result.message);
+        } else {
+            alert(result.message);
+        }
+    } catch(e) {
+        alert('SaveFailed: ' + e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    checkLogo();
+    loadSMTP();
+    loadLoginTitle();
+    loadSchedulerConfig();
+});
+
+async function checkLogo() {
+    try {
+        const data = await fetch('/api/logo').then(r => r.json());
+        const preview = document.getElementById('logoPreview');
+        if (data.exists) {
+            preview.innerHTML = '<img src="/static/logo.png?t=' + Date.now() + '" style="max-height:240px; max-width:600px; object-fit:contain;">';
+        }
+    } catch(e) {}
+}
+async function uploadLogo(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('logo', file);
+    const resp = await fetch('/api/logo', { method: 'POST', body: formData });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) checkLogo();
+}
+async function deleteLogo() {
+    if (!confirm('ConfirmNeed toDeleteLogo?？')) return;
+    const resp = await fetch('/api/logo', { method: 'DELETE' });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) checkLogo();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.ap-list { border: 1px solid rgba(0,212,255,0.2); background: rgba(0,0,0,0.25); border-radius: 10px; max-height: 180px; overflow-y: auto; }
+.ap-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+.ap-item:hover { background: rgba(0,212,255,0.08); }
+.ap-item.hidden-filter { display: none; }
+.ap-item.selected-item { background: rgba(0,212,255,0.15); border: 1px solid rgba(0,212,255,0.3); }
+.ap-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; flex-shrink: 0; }
+.ap-name { font-size: 13px; font-weight: 500; }
+.ap-meta { font-size: 11px; opacity: 0.6; }
+.search-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2); color: #e2e8f0; border-radius: 8px; padding: 7px 12px; font-size: 13px; outline: none; width: 100%; }
+.search-box:focus { border-color: rgba(0,212,255,0.5); }
+.node-card { border: 1px solid rgba(0,212,255,0.15); border-radius: 12px; padding: 14px; background: rgba(0,0,0,0.15); }
+.node-label { font-size: 12px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.node-hint { font-size: 11px; opacity: 0.5; font-weight: normal; }
+.sel-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 11px; background: rgba(0,212,255,0.2); color: var(--accent); margin: 2px; }
+.sel-remove { cursor: pointer; opacity: 0.7; }
+.sel-remove:hover { opacity: 1; }
+#fileBlockList .file-block { border: 1px solid rgba(0,212,255,0.2); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: rgba(0,0,0,0.15); }
+#fileBlockList .file-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.file-preview { display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(0,0,0,0.2); border-radius: 8px; }
+/* Dropdown option style */
+select option { background: #0f172a; color: #e2e8f0; padding: 8px; }
+</style>
+
+<div class="mb-4">
+    <a href="{{ url_for('approvals') }}" class="text-sm hover:opacity-80" style="color:var(--text-dim);">
+        <i class="fas fa-arrow-left mr-1"></i>Back To Approval List
+    </a>
+</div>
+
+<div class="glass-card rounded-xl p-6 mb-5">
+    <h2 class="text-lg font-bold mb-1" style="color:var(--accent);">
+        <i class="fas fa-plus-circle mr-2"></i>New Approval Workflow
+    </h2>
+    <p class="text-xs mb-5" style="color:var(--text-dim);">
+        Workflow Node：Quality Specialist → Dept Manager → Related Functional Manager → Quality Manager → Quality Release
+    </p>
+
+    <form id="wfForm">
+        <!-- BaseThisInformation -->
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-heading mr-1"></i>Workflow Title *
+            </label>
+            <input type="text" name="title" id="fTitle" required
+                   class="w-full px-4 py-2.5 rounded-lg text-sm"
+                   style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;"
+                   placeholder="Please enter Approval Workflow Title">
+        </div>
+
+        <!-- Apply Please Type -->
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-list-alt mr-1"></i>Apply Please Type *
+            </label>
+            <select name="apply_type" id="fApplyType" required
+                    class="w-full px-3 py-2 rounded-lg text-sm"
+                    style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                <option value="">Please select</option>
+                <option value="New Add">New Add</option>
+                <option value="Change">Change</option>
+                <option value="Obsolete">Obsolete</option>
+                <option value="Reissue">Reissue</option>
+                <option value="Other Situation">Other Situation</option>
+            </select>
+        </div>
+
+        <!-- Apply Please Reason -->
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-pen-alt mr-1"></i>Apply Please Reason
+            </label>
+            <textarea name="apply_reason" id="fApplyReason" rows="4" maxlength="1000"
+                      class="w-full px-4 py-2.5 rounded-lg text-sm"
+                      style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none; resize:vertical;"
+                      placeholder="Simple Need toDescription For Application Reason（Max1000Character）"></textarea>
+        </div>
+
+        <!-- File Change Description -->
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-2" style="color:var(--text-dim);">
+                <i class="fas fa-align-left mr-1"></i>File Change Description
+            </label>
+            <textarea name="change_description" id="fChangeDesc" rows="4" maxlength="1000"
+                      class="w-full px-4 py-2.5 rounded-lg text-sm"
+                      style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none; resize:vertical;"
+                      placeholder="Detail Description timeFile Change Content（Max1000Character）"></textarea>
+        </div>
+
+        <!-- ApprovalNode -->
+        <div class="mb-5">
+            <h3 class="text-sm font-bold mb-3" style="color:var(--accent);">
+                <i class="fas fa-sitemap mr-2"></i>Approval Node config
+            </h3>
+
+            <!-- Quality Specialist -->
+            <div class="node-card mb-3">
+                <div class="node-label">
+                    <i class="fas fa-user-shield"></i>
+                    Node 1：Quality Specialist *
+                    <span class="node-hint">（Single select）</span>
+                </div>
+                <input type="text" class="search-box mb-2" placeholder="Search：Username / CDSID / Department..." 
+                       oninput="filterUsers(this, 'node_0')">
+                <div class="ap-list" id="node_0" data-multi="0" data-nodename="Quality Specialist"></div>
+                <div id="sel_node_0" class="mt-2 flex flex-wrap"></div>
+            </div>
+
+            <!-- Dept Manager -->
+            <div class="node-card mb-3">
+                <div class="node-label">
+                    <i class="fas fa-user-tie"></i>
+                    Node 2：Dept Manager *
+                    <span class="node-hint">（Single select）</span>
+                </div>
+                <input type="text" class="search-box mb-2" placeholder="Search：Username / CDSID / Department..."
+                       oninput="filterUsers(this, 'node_1')">
+                <div class="ap-list" id="node_1" data-multi="0" data-nodename="Dept Manager"></div>
+                <div id="sel_node_1" class="mt-2 flex flex-wrap"></div>
+            </div>
+
+            <!-- Related Functional Manager（Multi-select） -->
+            <div class="node-card mb-3" style="border-color:rgba(251,191,36,0.3); background:rgba(251,191,36,0.03);">
+                <div class="node-label" style="color:#fbbf24;">
+                    <i class="fas fa-users-cog"></i>
+                    Node 3：Related Functional Manager *
+                    <span class="node-hint" style="color:#fbbf24;">（Can multi-select，Support Select Multiple Users）</span>
+                </div>
+                <input type="text" class="search-box mb-2" placeholder="Search：Username / CDSID / Department..."
+                       oninput="filterUsers(this, 'node_2')">
+                <div class="ap-list" id="node_2" data-multi="1" data-nodename="Related Functional Manager"></div>
+                <div id="sel_node_2" class="mt-2 flex flex-wrap"></div>
+            </div>
+
+            <!-- Quality Manager -->
+            <div class="node-card mb-3">
+                <div class="node-label">
+                    <i class="fas fa-chart-line"></i>
+                    Node 4：Quality Manager *
+                    <span class="node-hint">（Single select）</span>
+                </div>
+                <input type="text" class="search-box mb-2" placeholder="Search：Username / CDSID / Department..."
+                       oninput="filterUsers(this, 'node_3')">
+                <div class="ap-list" id="node_3" data-multi="0" data-nodename="Quality Manager"></div>
+                <div id="sel_node_3" class="mt-2 flex flex-wrap"></div>
+            </div>
+
+            <!-- Quality Release -->
+            <div class="node-card mb-3">
+                <div class="node-label">
+                    <i class="fas fa-globe"></i>
+                    Node 5：Quality Release *
+                    <span class="node-hint">（Single select）</span>
+                </div>
+                <input type="text" class="search-box mb-2" placeholder="Search：Username / CDSID / Department..."
+                       oninput="filterUsers(this, 'node_4')">
+                <div class="ap-list" id="node_4" data-multi="0" data-nodename="Quality Release"></div>
+                <div id="sel_node_4" class="mt-2 flex flex-wrap"></div>
+            </div>
+        </div>
+
+        <!-- AttachmentUpload（Per  itemsAttachmentIndependentSettingsDepartment+Type） -->
+        <div class="mb-5">
+            <h3 class="text-sm font-bold mb-3" style="color:var(--accent);">
+                <i class="fas fa-paperclip mr-2"></i>Approval Attachment
+                <span class="text-xs font-normal" style="color:var(--text-dim);">（Per  itemsAttachment Please Set Corresponding Department And File Type，Such asIf Obsolete Files，Not Need toNeed toUpload Attachment If，Please Right clickRemove Button，Remove Upload Attachment Window）</span>
+            </h3>
+            <div id="fileBlockList"></div>
+            <button type="button" onclick="addFileBlock()" class="mt-2 px-4 py-2 rounded-lg text-sm"
+                    style="background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.25); color:var(--accent);">
+                <i class="fas fa-plus mr-1"></i>Add Attachment
+            </button>
+        </div>
+
+        <!-- SubmitButton -->
+        <div class="flex gap-3">
+            <button type="submit" class="tech-btn px-6 py-2.5 rounded-lg text-white text-sm font-semibold">
+                <i class="fas fa-paper-plane mr-2"></i>Initiated Approval
+            </button>
+            <a href="{{ url_for('approvals') }}" class="px-6 py-2.5 rounded-lg text-sm"
+               style="background:rgba(100,100,100,0.2); color:var(--text-dim);">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+// HaveUser data
+const ALL_USERS = {{ users|tojson }};
+
+// NodeName
+const NODE_NAMES = ['Quality Specialist', 'Dept Manager', 'Related Functional Manager', 'Quality Manager', 'Quality Release'];
+
+// Per  itemsNodeSelectedUser [{nodeIdx, userId, username}]
+let nodeSelections = {};
+NODE_NAMES.forEach((_, i) => { nodeSelections[i] = []; });
+
+// InitializeUser List
+// Note：No. One itemsNode（Quality Specialist）AndMost afterOne itemsNode（Quality Release）Can onlySelectRoleFor"Quality Specialist"User
+function initUserLists() {
+    ALL_USERS.forEach(user => {
+        for (let i = 0; i < 5; i++) {
+            // No. One itemsNode（Quality Specialist）AndMost afterOne itemsNode（Quality Release）OnlyShowQuality SpecialistRoleUser
+            const isSystemNode = (i === 0 || i === 4);
+            const isSystemUser = (user.role === 'Quality Specialist');
+            if (isSystemNode && !isSystemUser) {
+                continue; // Skip non-Quality SpecialistUser
+            }
+            
+            const div = document.createElement('div');
+            div.className = 'ap-item';
+            div.dataset.uid = user.id;
+            div.dataset.username = user.username;
+            div.dataset.cdsid = user.cdsid || '';
+            div.dataset.dept = user.department || '';
+            div.dataset.nodeIdx = i;
+            const initials = user.username.slice(0, 1).toUpperCase();
+            const hue = (user.username.charCodeAt(0) * 37) % 360;
+            div.innerHTML = `
+                <div class="ap-avatar" style="background:hsl(${hue},60%,35%);color:#fff;">${initials}</div>
+                <div>
+                    <div class="ap-name">${escHtml(user.username)}</div>
+                    <div class="ap-meta">${escHtml(user.cdsid || '')} · ${escHtml(user.department || '')}</div>
+                </div>
+            `;
+            div.addEventListener('click', () => toggleUserSelect(i, user));
+            document.getElementById('node_' + i).appendChild(div);
+        }
+    });
+}
+
+// EscapeHTML
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// FilterUser List
+function filterUsers(input, nodeId) {
+    const q = input.value.toLowerCase().trim();
+    const nodeIdx = parseInt(nodeId.split('_')[1]);
+    document.querySelectorAll('#' + nodeId + ' .ap-item').forEach(item => {
+        const uid = item.dataset.uid;
+        if (!uid) return;
+        const username = item.dataset.username.toLowerCase();
+        const cdsid = (item.dataset.cdsid || '').toLowerCase();
+        const dept = (item.dataset.dept || '').toLowerCase();
+        const match = !q || username.includes(q) || cdsid.includes(q) || dept.includes(q);
+        item.classList.toggle('hidden-filter', !match);
+    });
+}
+
+// Selected/CancelUser
+function toggleUserSelect(nodeIdx, user) {
+    const nodeId = 'node_' + nodeIdx;
+    const isMulti = document.getElementById(nodeId).dataset.multi === '1';
+    const selList = nodeSelections[nodeIdx];
+    const existingIdx = selList.findIndex(s => s.userId === user.id);
+
+    if (existingIdx >= 0) {
+        // CancelSelected
+        selList.splice(existingIdx, 1);
+    } else {
+        if (!isMulti && selList.length >= 1) {
+            selList.splice(0, selList.length); // Single select only keeps one items
+        }
+        selList.push({ userId: user.id, username: user.username });
+    }
+    renderSelections(nodeIdx);
+}
+
+// RenderAlready Selected user
+function renderSelections(nodeIdx) {
+    const container = document.getElementById('sel_node_' + nodeIdx);
+    container.innerHTML = '';
+    nodeSelections[nodeIdx].forEach(s => {
+        const badge = document.createElement('span');
+        badge.className = 'sel-badge';
+        badge.innerHTML = `${escHtml(s.username)}<span class="sel-remove" onclick="toggleUserSelect(${nodeIdx},{id:'${s.userId}',username:'${escHtml(s.username)}'})">&times;</span>`;
+        container.appendChild(badge);
+    });
+    // UpdateNewListIn SelectedStatus
+    document.querySelectorAll('#node_' + nodeIdx + ' .ap-item').forEach(item => {
+        const isSelected = nodeSelections[nodeIdx].some(s => s.userId === item.dataset.uid);
+        item.classList.toggle('selected-item', isSelected);
+    });
+}
+
+// InitializeFileBlock
+let fileBlockCount = 0;
+function addFileBlock(userDept) {
+    fileBlockCount++;
+    const depts = {{ departments|tojson }};
+    const types = {{ file_types|tojson }};
+    const block = document.createElement('div');
+    block.className = 'file-block';
+    block.id = 'fileBlock_' + fileBlockCount;
+    block.innerHTML = `
+        <div class="file-block-header">
+            <span class="text-xs" style="color:var(--text-dim);">Attachment #${fileBlockCount}</span>
+            <button type="button" onclick="this.closest('.file-block').remove()" class="text-xs px-2 py-1 rounded" style="background:rgba(239,68,68,0.1);color:#f87171;">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        </div>
+        <div class="file-preview mb-3">
+            <i class="fas fa-file-upload text-2xl" style="color:var(--accent);"></i>
+            <div class="flex-1">
+                <input type="file" id="wfFile_${fileBlockCount}" class="hidden"
+                       onchange="onFileSelected(${fileBlockCount}, this.files)">
+                <button type="button" onclick="document.getElementById('wfFile_${fileBlockCount}').click()"
+                        class="px-4 py-1.5 rounded-lg text-xs"
+                        style="background:rgba(0,212,255,0.1);color:var(--accent);border:1px solid rgba(0,212,255,0.2);">
+                    <i class="fas fa-upload mr-1"></i>Select File
+                </button>
+                <span id="fileName_${fileBlockCount}" class="ml-2 text-xs" style="color:var(--text-dim);">Not Select File</span>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="text-xs mb-1 block" style="color:var(--text-dim);">Department *</label>
+                <select id="fDept_${fileBlockCount}" class="search-box" required>
+                    <option value="">Please selectDepartment</option>
+                    ${depts.map(d => `<option value="${escHtml(d)}" ${d === userDept ? 'selected' : ''}>${escHtml(d)}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                <label class="text-xs mb-1 block" style="color:var(--text-dim);">File Type *</label>
+                <select id="fType_${fileBlockCount}" class="search-box" required>
+                    <option value="">Please selectType</option>
+                    ${types.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('')}
+                </select>
+            </div>
+        </div>
+    `;
+    document.getElementById('fileBlockList').appendChild(block);
+}
+
+function onFileSelected(blockId, files) {
+    if (files && files.length > 0) {
+        document.getElementById('fileName_' + blockId).textContent = files[0].name;
+    }
+}
+
+// SubmitForm
+document.getElementById('wfForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const title = document.getElementById('fTitle').value.trim();
+    if (!title) { alert('Please Fill inWorkflow Title'); return; }
+
+    // CheckPer  itemsNodeAre you sureSelect allApproval User
+    const nodeIds = NODE_NAMES.join(',');
+    for (let i = 0; i < 5; i++) {
+        if (nodeSelections[i].length === 0) {
+            alert(`Please For「${NODE_NAMES[i]}」NodeSelectApproval User`);
+            return;
+        }
+    }
+
+    // CollectAttachment
+    const fileBlocks = document.querySelectorAll('.file-block');
+    const fileInfo = [];
+    for (const block of fileBlocks) {
+        const id = block.id.split('_')[1];
+        const fileInput = document.getElementById('wfFile_' + id);
+        const deptSelect = document.getElementById('fDept_' + id);
+        const typeSelect = document.getElementById('fType_' + id);
+        if (!fileInput.files[0]) {
+            alert('Please ForPer  itemsAttachmentSelect File');
+            return;
+        }
+        if (!deptSelect.value || !typeSelect.value) {
+            alert('Please ForPer  itemsAttachmentSelectDepartmentAndFile Type');
+            return;
+        }
+        fileInfo.push({ file: fileInput.files[0], dept: deptSelect.value, type: typeSelect.value });
+    }
+
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('apply_type', document.getElementById('fApplyType').value);
+    formData.append('apply_reason', document.getElementById('fApplyReason').value.trim());
+    formData.append('change_description', document.getElementById('fChangeDesc').value.trim());
+    // Per  itemsNodeApproval User
+    for (let i = 0; i < 5; i++) {
+        formData.append('node_' + i + '_ids', nodeSelections[i].map(s => s.userId).join(','));
+        formData.append('node_' + i + '_names', nodeSelections[i].map(s => s.username).join(','));
+        formData.append('node_' + i + '_name', NODE_NAMES[i]);
+    }
+    // Attachment
+    fileInfo.forEach((info, idx) => {
+        formData.append('file_' + idx, info.file);
+        formData.append('file_' + idx + '_dept', info.dept);
+        formData.append('file_' + idx + '_type', info.type);
+    });
+    formData.append('file_count', fileInfo.length);
+
+    const btn = this.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>SubmitIn ...';
+
+    try {
+        const resp = await fetch('/workflow/create', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await resp.json();
+        if (data.success) {
+            window.location.href = '/workflow/' + data.workflow_id;
+        } else {
+            alert(data.message || 'SubmitFailed');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Initiated Approval';
+        }
+    } catch(e) {
+        alert('NetworkError：' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Initiated Approval';
+    }
+});
+
+// Initialize
+initUserLists();
+addFileBlock();
+</script>
+{% endblock %}

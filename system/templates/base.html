@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="{{ sidebar.user_theme | default('tech-blue') }}" data-custom-colors="{{ custom_colors }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title or 'DMS File Management System'}}{% endblock %} - DMS</title>
+    <script src="/static/tailwind.js"></script>
+    <link rel="stylesheet" href="/static/css/font-awesome.min.css">
+    <script>
+        // Apply custom theme BEFORE page renders to prevent flash - read from DOM attributes instead of Jinja2
+        (function() {
+            var t = document.documentElement.getAttribute('data-theme');
+            var cs = document.documentElement.getAttribute('data-custom-colors');
+            if (t === 'custom' && cs) {
+                try {
+                    var c = JSON.parse(cs);
+                    var r = document.documentElement.style;
+                    // Database stores RGB {"r":70,"g":176,"b":121}, script converts to HSV
+                    var red = c.r || 0, green = c.g || 0, blue = c.b || 0;
+                    var rgb = {r: red, g: green, b: blue};
+                    // Calculate HSV from RGB
+                    var max = Math.max(red, green, blue), min = Math.min(red, green, blue);
+                    var h = 0, s = 0, v = max / 255 * 100;
+                    if (max > 0) s = (max - min) / max * 100;
+                    if (max !== min) {
+                        if (max === red) h = 60 * ((green - blue) / (max - min)) % 360;
+                        else if (max === green) h = 60 * ((blue - red) / (max - min)) + 120;
+                        else h = 60 * ((red - green) / (max - min)) + 240;
+                    }
+                    if (h < 0) h += 360;
+                    // Set CSS variables for custom theme (these are used by [data-theme="custom"] selector)
+                    var bg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.15)';
+                    var bg2 = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.25)';
+                    var accent = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
+                    var accent2 = 'hsl(' + ((Math.round(h) + 30) % 360) + ',80%,60%)';
+                    var text = 'rgb(226,232,240)';
+                    var border = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.3)';
+                    r.setProperty('--custom-bg-primary', '#0a1628');
+                    r.setProperty('--custom-bg-secondary', bg2);
+                    r.setProperty('--custom-accent', accent);
+                    r.setProperty('--custom-accent2', accent2);
+                    r.setProperty('--custom-text', text);
+                    r.setProperty('--custom-text-dim', 'rgba(148,163,184,0.8)');
+                    r.setProperty('--custom-border', border);
+                    r.setProperty('--custom-card-bg', bg);
+                } catch(e) { console.log('Custom theme error:', e); }
+            }
+        })();
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'glass': 'rgba(15, 32, 60, 0.85)',
+                        'glass-light': 'rgba(25, 45, 80, 0.75)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #0a1628;
+            --bg-secondary: #0f2340;
+            --accent: #00d4ff;
+            --accent2: #4facfe;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+            --border: rgba(0, 212, 255, 0.2);
+            --card-bg: rgba(15, 35, 64, 0.85);
+        }
+        /* ===== Deep Dark Themes ===== */
+        [data-theme="dark-purple"] {
+            --bg-primary: #000000; --bg-secondary: #111111; --accent: #888888; --accent2: #666666;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(128,128,128,0.2); --card-bg: rgba(17,17,17,0.85);
+        }
+        [data-theme="forest-green"] {
+            --bg-primary: #0a2818; --bg-secondary: #133d24; --accent: #22c55e; --accent2: #16a34a;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(34,197,94,0.2); --card-bg: rgba(19,61,36,0.85);
+        }
+        [data-theme="sunset-orange"] {
+            --bg-primary: #2a1408; --bg-secondary: #3d1f0c; --accent: #f97316; --accent2: #ea580c;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(249,115,22,0.2); --card-bg: rgba(61,31,12,0.85);
+        }
+        [data-theme="rose-pink"] {
+            --bg-primary: #2a0a18; --bg-secondary: #3d0f24; --accent: #f43f5e; --accent2: #e11d48;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(244,63,94,0.2); --card-bg: rgba(61,15,36,0.85);
+        }
+        [data-theme="ocean-teal"] {
+            --bg-primary: #0a2420; --bg-secondary: #0f3830; --accent: #14b8a6; --accent2: #0d9488;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(20,184,166,0.2); --card-bg: rgba(15,56,48,0.85);
+        }
+        [data-theme="midnight-blue"] {
+            --bg-primary: #0a1230; --bg-secondary: #111d4a; --accent: #3b82f6; --accent2: #2563eb;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(59,130,246,0.2); --card-bg: rgba(17,29,74,0.85);
+        }
+        [data-theme="golden-yellow"] {
+            --bg-primary: #2a2208; --bg-secondary: #3d320c; --accent: #eab308; --accent2: #ca8a04;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(234,179,8,0.2); --card-bg: rgba(61,50,12,0.85);
+        }
+        [data-theme="crimson-red"] {
+            --bg-primary: #2a0a0a; --bg-secondary: #3d0f0f; --accent: #dc2626; --accent2: #b91c1c;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(220,38,38,0.2); --card-bg: rgba(61,15,15,0.85);
+        }
+        [data-theme="slate-gray"] {
+            --bg-primary: #1e293b; --bg-secondary: #334155; --accent: #94a3b8; --accent2: #64748b;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(148,163,184,0.2); --card-bg: rgba(51,65,85,0.85);
+        }
+        [data-theme="emerald-green"] {
+            --bg-primary: #082a1a; --bg-secondary: #0f3d28; --accent: #10b981; --accent2: #059669;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(16,185,129,0.2); --card-bg: rgba(15,61,40,0.85);
+        }
+        [data-theme="sky-cyan"] {
+            --bg-primary: #081e2a; --bg-secondary: #0f2e3d; --accent: #06b6d4; --accent2: #0891b2;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(6,182,212,0.2); --card-bg: rgba(15,46,61,0.85);
+        }
+        [data-theme="violet-purple"] {
+            --bg-primary: #1e0a30; --bg-secondary: #2d1548; --accent: #8b5cf6; --accent2: #7c3aed;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(139,92,246,0.2); --card-bg: rgba(45,21,72,0.85);
+        }
+        [data-theme="amber-orange"] {
+            --bg-primary: #2a1e08; --bg-secondary: #3d2c0f; --accent: #f59e0b; --accent2: #d97706;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(245,158,11,0.2); --card-bg: rgba(61,44,15,0.85);
+        }
+        [data-theme="lime-green"] {
+            --bg-primary: #1a2a08; --bg-secondary: #283d0f; --accent: #84cc16; --accent2: #65a30d;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(132,204,22,0.2); --card-bg: rgba(40,61,15,0.85);
+        }
+        [data-theme="indigo-blue"] {
+            --bg-primary: #141028; --bg-secondary: #1e1840; --accent: #6366f1; --accent2: #4f46e5;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(99,102,241,0.2); --card-bg: rgba(30,24,64,0.85);
+        }
+        [data-theme="pink-rose"] {
+            --bg-primary: #2a0a20; --bg-secondary: #3d0f30; --accent: #ec4899; --accent2: #db2777;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(236,72,153,0.2); --card-bg: rgba(61,15,48,0.85);
+        }
+        [data-theme="cyan-blue"] {
+            --bg-primary: #082830; --bg-secondary: #0f3d48; --accent: #22d3ee; --accent2: #06b6d4;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(34,211,238,0.2); --card-bg: rgba(15,61,72,0.85);
+        }
+        [data-theme="orange-red"] {
+            --bg-primary: #2a1408; --bg-secondary: #3d1c0f; --accent: #fb923c; --accent2: #ea580c;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(251,146,60,0.2); --card-bg: rgba(61,28,15,0.85);
+        }
+        [data-theme="neutral-gray"] {
+            --bg-primary: #1c1c1c; --bg-secondary: #2a2a2a; --accent: #a3a3a3; --accent2: #737373;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(163,163,163,0.2); --card-bg: rgba(42,42,42,0.85);
+        }
+
+        /* ===== Light Themes ===== */
+        [data-theme="light-white"] {
+            --bg-primary: #f8fafc; --bg-secondary: #ffffff; --accent: #3b82f6; --accent2: #2563eb;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(59,130,246,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-blue"] {
+            --bg-primary: #eff6ff; --bg-secondary: #ffffff; --accent: #2563eb; --accent2: #1d4ed8;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(37,99,235,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-green"] {
+            --bg-primary: #f0fdf4; --bg-secondary: #ffffff; --accent: #16a34a; --accent2: #15803d;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(22,163,74,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-purple"] {
+            --bg-primary: #faf5ff; --bg-secondary: #ffffff; --accent: #7c3aed; --accent2: #6d28d9;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(124,58,237,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-orange"] {
+            --bg-primary: #fff7ed; --bg-secondary: #ffffff; --accent: #ea580c; --accent2: #c2410c;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(234,88,12,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-pink"] {
+            --bg-primary: #fdf2f8; --bg-secondary: #ffffff; --accent: #db2777; --accent2: #be185d;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(219,39,119,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-teal"] {
+            --bg-primary: #f0fdfa; --bg-secondary: #ffffff; --accent: #0d9488; --accent2: #0f766e;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(13,148,136,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-gray"] {
+            --bg-primary: #f9fafb; --bg-secondary: #ffffff; --accent: #4b5563; --accent2: #374151;
+            --text: #1e293b; --text-dim: #6b7280; --border: rgba(75,85,99,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-rose"] {
+            --bg-primary: #fff1f2; --bg-secondary: #ffffff; --accent: #e11d48; --accent2: #be123c;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(225,29,72,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="light-indigo"] {
+            --bg-primary: #eef2ff; --bg-secondary: #ffffff; --accent: #4f46e5; --accent2: #4338ca;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(79,70,229,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+        [data-theme="tech-blue"] {
+            --bg-primary: #0a1628; --bg-secondary: #0f2340; --accent: #00d4ff; --accent2: #0ea5e9;
+            --text: #e2e8f0; --text-dim: #94a3b8; --border: rgba(0,212,255,0.2); --card-bg: rgba(15,35,64,0.85);
+        }
+
+        /* ===== Custom Theme (dynamic) ===== */
+        [data-theme="custom"] {
+            --bg-primary: var(--custom-bg-primary, #0a1628);
+            --bg-secondary: var(--custom-bg-secondary, #0f2340);
+            --accent: var(--custom-accent, #00d4ff);
+            --accent2: var(--custom-accent2, #0ea5e9);
+            --text: var(--custom-text, #e2e8f0);
+            --text-dim: var(--custom-text-dim, #94a3b8);
+            --border: var(--custom-border, rgba(0,212,255,0.2));
+            --card-bg: var(--custom-card-bg, rgba(15,35,64,0.85));
+        }
+
+        /* ===== Light Theme Overrides ===== */
+        [data-theme^="light-"] {
+            --grid-color: rgba(0, 0, 0, 0.03);
+            --hover-bg: rgba(0, 0, 0, 0.05);
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+
+        /* Dark ThemeDefault value */
+        :root, [data-theme]:not([data-theme^="light-"]) {
+            --grid-color: rgba(0, 212, 255, 0.03);
+            --hover-bg: rgba(0, 212, 255, 0.08);
+            --shadow-color: rgba(0, 212, 255, 0.3);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        [data-theme="light-cream"] {
+            --bg-primary: #fefce8; --bg-secondary: #ffffff; --accent: #ca8a04; --accent2: #a16207;
+            --text: #1e293b; --text-dim: #64748b; --border: rgba(202,138,4,0.15); --card-bg: rgba(255,255,255,0.9);
+        }
+
+
+        body {
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: var(--bg-primary);
+            background-attachment: fixed;
+            color: var(--text);
+            min-height: 100vh;
+            position: relative;
+        }
+        /* MainContentArea background */
+        main {
+            background: transparent;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header Background */
+        header.glass-card {
+            background: var(--card-bg);
+        }
+
+        /* Tech grid background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            box-shadow: var(--glass-shadow);
+        }
+        .tech-btn {
+            background: linear-gradient(135deg, var(--accent2), var(--accent));
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+        .tech-btn:hover {
+            box-shadow: 0 6px 25px var(--shadow-color);
+            transform: translateY(-1px);
+        }
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            position: relative;
+            z-index: 1;
+        }
+        .sidebar-item {
+            color: var(--text-dim);
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-item:hover, .sidebar-item.active {
+            color: var(--accent);
+            background: var(--hover-bg);
+            border-left-color: var(--accent);
+        }
+        .nav-link {
+            color: var(--text-dim);
+            transition: color 0.2s;
+            position: relative;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: var(--accent);
+        }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent2), var(--accent));
+            border-radius: 2px;
+        }
+        .glow-text {
+            text-shadow: 0 0 20px var(--shadow-color);
+        }
+        .font-tech {
+            font-family: 'Orbitron', 'Courier New', monospace;
+        }
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .sidebar-active-dept { color: var(--accent) !important; }
+        .dept-item {
+            cursor: pointer;
+        }
+        .cat-item.active { background: var(--hover-bg); color: var(--accent); border-radius: 6px; margin: 2px 8px; }
+        .cat-item {
+            cursor: pointer;
+            font-size: 13px;
+        }
+        /* Scroll style */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; opacity: 0.5; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); opacity:0.8; }
+        /* 20TypeTheme Color */
+        .theme-tech-blue  { --bg-primary:#0a1628; --accent:#00d4ff; --card-bg:rgba(15,35,64,0.85); }
+        .theme-midnight-purple { --bg-primary:#251542; --accent:#9333ea; --card-bg:rgba(45,25,75,0.85); }
+        .theme-forest-green { --bg-primary:#102810; --accent:#22c55e; --card-bg:rgba(25,55,25,0.85); }
+        .theme-sunset-orange { --bg-primary:#251a12; --accent:#f97316; --card-bg:rgba(65,35,25,0.85); }
+        .theme-dark-red { --bg-primary:#251a18; --accent:#ef4444; --card-bg:rgba(65,25,25,0.85); }
+        .theme-dark-teal { --bg-primary:#102828; --accent:#06b6d4; --card-bg:rgba(25,55,55,0.85); }
+        .theme-dark-amber { --bg-primary:#251e12; --accent:#f59e0b; --card-bg:rgba(65,50,25,0.85); }
+        .theme-dark-pink { --bg-primary:#251520; --accent:#ec4899; --card-bg:rgba(65,30,45,0.85); }
+        .theme-dark-monokai { --bg-primary:#353228; --accent:#a6e22e; --card-bg:rgba(65,60,50,0.85); }
+        .theme-dark-dracula { --bg-primary:#353245; --accent:#bd93f9; --card-bg:rgba(65,60,75,0.85); }
+        .theme-light-blue { --bg-primary:#f0f4f8; --accent:#0ea5e9; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-green { --bg-primary:#f0fdf4; --accent:#22c55e; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-purple { --bg-primary:#f5f3ff; --accent:#8b5cf6; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-orange { --bg-primary:#fff7ed; --accent:#f97316; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-pink { --bg-primary:#fdf2f8; --accent:#ec4899; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-cyan { --bg-primary:#f0f9ff; --accent:#06b6d4; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-yellow { --bg-primary:#fefce8; --accent:#eab308; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-red { --bg-primary:#fef2f2; --accent:#ef4444; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-slate { --bg-primary:#f8fafc; --accent:#475569; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .theme-light-violet { --bg-primary:#faf5ff; --accent:#7c3aed; --card-bg:rgba(255,255,255,0.9); --text:#1e293b; --text-dim:#64748b; }
+        .cat-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.25s ease-out;
+        }
+        .cat-list.expanded {
+            max-height: 1000px;
+            transition: max-height 0.3s ease-in;
+        }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 9999px; font-size: 12px;
+        }
+        .status-published { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .status-pending { background: rgba(234,179,8,0.2); color: #fbbf24; }
+        .status-obsolete { background: rgba(239,68,68,0.2); color: #f87171; }
+        .table-hover:hover { background: var(--hover-bg); }
+    </style>
+    <link rel="stylesheet" href="/static/fonts/orbitron.css">
+</head>
+<body class="antialiased">
+    <div class="relative z-10 flex min-h-screen">
+        <!-- Left nav bar -->
+        <aside class="sidebar w-64 flex-shrink-0 flex flex-col hidden lg:flex" style="min-height:100vh; position:sticky; top:0; height:100vh; overflow-y:auto;">
+            <!-- LogoArea - Shrink50%AndShowCompanyName -->
+            <div class="p-3 border-b" style="border-color:var(--border);">
+                <div class="flex items-center gap-2">
+                    <div id="logoContainer" class="w-36 h-24 rounded-lg flex items-center justify-center flex-shrink-0"
+                         style="background:linear-gradient(135deg,var(--accent2),var(--accent)); box-shadow: 0 0 8px rgba(0,212,255,0.3);">
+                        <img id="logoImg" src="" alt="Logo" class="hidden w-full h-full object-contain rounded-lg p-1">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-tech text-xs font-bold glow-text truncate" style="color:var(--accent);">DMS</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation menu -->
+            <nav class="flex-1 py-3">
+                <!-- MainPage -->
+                <a href="{{ url_for('dashboard') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{% if request.endpoint == 'dashboard' %} active{% endif %}">
+                    <i class="fas fa-home w-5 text-center"></i>MainPage(Search File)
+                </a>
+
+                <!-- File Library（MainPage Below，Can Collapse） -->
+                <div class="px-5 py-2 text-xs font-bold tracking-wider" style="color:var(--text-dim); opacity:0.6;">
+                    <i class="fas fa-folder-open mr-1"></i>File Library
+                </div>
+                <div id="deptCats">
+                    {% for dept in sidebar.departments %}
+                    <div class="dept-item">
+                        <div class="flex items-center px-5 py-1.5 hover:opacity-80 transition-opacity cursor-pointer{% if sidebar.active_dept == dept.name %} sidebar-active-dept{% endif %}"
+                             onclick="toggleDept('dept-{{ loop.index }}')">
+                            <i class="fas fa-chevron-right text-xs w-5 text-center transition-transform dept-chevron" id="dept-icon-dept-{{ loop.index }}" style="color:var(--text-dim);{% if sidebar.active_dept == dept.name %} transform:rotate(90deg);{% endif %}"></i>
+                            <span class="text-sm">{{ dept.name }}</span>
+                            <span class="ml-auto text-xs px-1.5 rounded-full" style="background:var(--accent); color:#ffffff; font-weight:600; text-shadow:none; min-width:18px; text-align:center;">
+                                {{ sidebar.dept_counts.get(dept.name, 0) }}
+                            </span>
+                        </div>
+                        <div class="cat-list{% if sidebar.active_dept == dept.name %} expanded{% endif %}" id="dept-{{ loop.index }}">
+                            <a href="{{ url_for('files', dept=dept.name) }}" class="cat-item flex items-center gap-2 pl-14 pr-4 py-1 hover:opacity-80 transition-opacity{% if sidebar.active_dept == dept.name and not sidebar.active_cat %} active{% endif %}">
+                                <i class="fas fa-globe text-xs" style="color:var(--text-dim);"></i>
+                                AllFile
+                            </a>
+                            {% for cat in sidebar.dept_file_types.get(dept.name, []) %}
+                            <a href="{{ url_for('files', dept=dept.name, cat=cat) }}"
+                               class="cat-item flex items-center gap-2 pl-14 pr-4 py-1 hover:opacity-80 transition-opacity{% if sidebar.active_dept == dept.name and sidebar.active_cat == cat %} active{% endif %}">
+                                <i class="fas fa-file-alt text-xs" style="color:var(--accent);"></i>
+                                {{ cat }}
+                                <span class="ml-auto text-xs" style="color:#ffffff; text-shadow:none; min-width:18px; text-align:center; font-weight:600;">
+                                    {{ sidebar.cat_counts.get((dept.name, cat), 0) }}
+                                </span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- File Approval -->
+                {% if session.role not in ['Read-only User'] %}
+                <a href="{{ url_for('approvals') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'approvals' else '' }}">
+                    <i class="fas fa-tasks w-5 text-center"></i>File Approval
+                </a>
+                {% endif %}
+                <!-- File Management -->
+                {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                <a href="{{ url_for('files') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'files' and not sidebar.active_dept else '' }}">
+                    <i class="fas fa-folder w-5 text-center"></i>File Management
+                </a>
+                {% endif %}
+
+                <!-- Obsoleted Files（AndFile ManagementSame level） -->
+                {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                <a href="{{ url_for('obsolete_files_page') }}"
+                   class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{% if request.endpoint == 'obsolete_files_page' %} active{% endif %}">
+                    <i class="fas fa-trash-alt w-5 text-center" style="color:#ff6b6b;"></i>Obsoleted Files
+                    <span class="ml-auto text-xs px-1.5 rounded-full"
+                          style="background:rgba(255,100,100,0.25);color:#ff6b6b;font-weight:600;">
+                        {{ sidebar.obsolete_count }}
+                    </span>
+                </a>
+                {% endif %}
+                <!-- AdminFeature -->
+                {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                <div class="px-5 py-2 text-xs font-bold tracking-wider" style="color:var(--text-dim); opacity:0.6;">
+                    AdminFeature
+                </div>
+                {% if session.role == 'System Admin' %}
+                <a href="{{ url_for('users') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'users' else '' }}">
+                    <i class="fas fa-users w-5 text-center"></i>User Management
+                </a>
+                <a href="{{ url_for('dept_type_manage') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'dept_type_manage' else '' }}">
+                    <i class="fas fa-project-diagram w-5 text-center"></i>Department And Type
+                </a>
+                {% endif %}
+                {% if session.role in ['System Admin', 'Quality Specialist'] %}
+                <a href="{{ url_for('backup_page') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'backup_page' else '' }}">
+                    <i class="fas fa-download w-5 text-center"></i>Data Backup
+                </a>
+                {% if session.role == 'System Admin' %}
+                <a href="{{ url_for('operation_logs') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'operation_logs' else '' }}">
+                    <i class="fas fa-history w-5 text-center"></i>Operation Log
+                </a>
+                <a href="{{ url_for('system_config') }}" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm{{ ' active' if request.endpoint == 'system_config' else '' }}">
+                    <i class="fas fa-sliders-h w-5 text-center"></i>System config
+                </a>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+                <!-- UserSettings -->
+                <a href="#" onclick="toggleUserMenu()" class="sidebar-item flex items-center gap-3 px-5 py-2.5 text-sm">
+                    <i class="fas fa-user-cog w-5 text-center"></i>UserSettings
+                </a>
+                <div id="userMenu" class="hidden ml-8 space-y-1">
+                    <!-- Change Password -->
+                    <a href="#" onclick="openChangePasswordModal(); return false;" class="sidebar-item flex items-center gap-3 px-4 py-2 text-xs" style="color:var(--accent);">
+                        <i class="fas fa-key w-4"></i>Change Password
+                    </a>
+
+                    <a href="/skin-settings" class="sidebar-item flex items-center gap-3 px-4 py-2 text-xs" style="color:var(--accent);">
+                        <i class="fas fa-palette w-4"></i>SkinSettings
+                    </a>                    
+                    <a href="{{ url_for('logout') }}" class="sidebar-item flex items-center gap-3 px-4 py-2 text-xs" style="color:#f87171;">
+                        <i class="fas fa-sign-out-alt w-4"></i>Logout
+                    </a>
+                </div>
+            </nav>
+
+            
+
+            <!-- User Information -->
+            <div class="p-4 border-t text-xs" style="border-color:var(--border);">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" style="background:var(--accent); color:#000;">
+                        {{ session.username[0].upper() }}
+                    </div>
+                    <div>
+                        <div class="font-medium">{{ session.username }}</div>
+                        <div class="text-xs" style="color:var(--text-dim);">{{ session.role }}</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MainContentArea -->
+        <div class="flex-1 flex flex-col min-w-0">
+            <!-- Top bar：Page faceTitle + Notification -->
+            <header class="glass-card sticky top-0 z-40 border-b" style="border-color:var(--border);">
+                <div class="max-w-full mx-auto px-6 py-3">
+                    <div class="flex items-center justify-between">
+                        <!-- Page faceTitle + Breadcrumb -->
+                        <div class="flex flex-col justify-center gap-1">
+                            <h1 class="text-base font-semibold" style="color:var(--text);">{{ page_title or '' }}</h1>
+                            {% if breadcrumb %}
+                            <nav class="flex items-center gap-1 text-xs" style="color:var(--text-dim);">
+                                {% for crumb in breadcrumb %}
+                                {% if loop.index0 > 0 %}
+                                <i class="fas fa-chevron-right text-[8px] opacity-50"></i>
+                                {% endif %}
+                                {% if crumb.url and not loop.last %}
+                                <a href="{{ crumb.url }}" class="hover:opacity-80 transition-opacity" style="color:var(--accent);">{{ crumb.label }}</a>
+                                {% else %}
+                                <span class="{% if loop.last %}font-medium{% endif %}">{{ crumb.label }}</span>
+                                {% endif %}
+                                {% endfor %}
+                            </nav>
+                            {% endif %}
+                        </div>
+
+                        <!-- Right -->
+                        <div class="flex items-center gap-3">
+                            <!-- NotificationBell -->
+                            <a href="{{ url_for('notifications') }}" class="relative p-2 rounded-lg hover:opacity-80 transition-opacity" style="background:rgba(0,0,0,0.2);" title="Notification In ">
+                                <i class="fas fa-bell text-sm" style="color:var(--accent);"></i>
+                                {% if sidebar.get('unread_notifs', 0) > 0 %}
+                                <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-xs font-bold"
+                                      style="background:#f87171; color:#fff; font-size:10px;">
+                                    {% if sidebar.get('unread_notifs', 0) > 9 %}9+{% else %}{{ sidebar.get('unread_notifs', 0) }}{% endif %}
+                                </span>
+                                {% endif %}
+                            </a>
+                            <!-- Exit -->
+                            <a href="{{ url_for('logout') }}"
+                               class="p-2 rounded-lg hover:opacity-80 transition-all"
+                               style="background:rgba(239,68,68,0.1);"
+                               title="Logout"
+                               onclick="return confirm('Confirm to Logout?')">
+                                <i class="fas fa-sign-out-alt text-sm" style="color:#f87171;"></i>
+                            </a>
+                            <button onclick="openChangePasswordModal()" class="p-2 rounded-lg hover:opacity-80 transition-all" style="background:rgba(0,212,255,0.1);" title="Change Password">
+                                <i class="fas fa-key text-sm" style="color:var(--accent);"></i>
+                            </button>
+                            <span class="text-xs" style="color:var(--text-dim);">{{ session.username }}</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page faceContent -->
+            <main class="flex-1 p-6">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Bottom -->
+            <footer class="border-t py-4 px-6 text-center text-xs" style="border-color:var(--border); color:var(--text-dim);">
+                Document Management System Designed by JW &copy;2026
+                <span class="ml-2 font-tech" style="color:var(--accent);">v1.0.0</span>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        function toggleDept(id) {
+            const el = document.getElementById(id);
+            const icon = document.getElementById('dept-icon-' + id);
+            if (el.classList.contains('expanded')) {
+                el.classList.remove('expanded');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            } else {
+                el.classList.add('expanded');
+                if (icon) icon.style.transform = 'rotate(90deg)';
+            }
+        }
+        
+        // Check andShowCompany Logo
+        function checkAndShowLogo() {
+            fetch('/public/logo')
+                .then(r => r.json())
+                .then(data => {
+                    const logoContainer = document.getElementById('logoContainer');
+                    const logoImg = document.getElementById('logoImg');
+                    
+                    if (data.exists) {
+                        logoImg.classList.remove('hidden');
+                        logoImg.src = '/static/logo.png?t=' + Date.now();
+                        logoContainer.style.background = 'transparent';
+                        logoContainer.style.boxShadow = 'none';
+                        
+                        // EnsureImageLoadingSuccess afterShow
+                        logoImg.onload = function() {
+                            console.log('Logo loaded successfully');
+                            this.style.display = 'block';
+                        };
+                        logoImg.onerror = function() {
+                            console.log('Logo load failed');
+                            logoImg.classList.add('hidden');
+                        };
+                    }
+                })
+                .catch(e => console.log('Logo check failed:', e));
+        }
+        
+        // DefaultExpandNo. One itemsDepartment（MainPageExcept）
+        document.addEventListener('DOMContentLoaded', function() {
+            // CheckLogo
+            checkAndShowLogo();
+            
+            // Based onsidebarPassactive_deptExpandCorrespondingDepartment（ByJinja2Control）
+            document.querySelectorAll('.dept-chevron').forEach(function(icon) {
+                const id = icon.id.replace('dept-icon-', '');
+                const list = document.getElementById(id);
+                if (list && list.classList.contains('expanded')) {
+                    icon.style.transform = 'rotate(90deg)';
+                }
+            });
+            // AutoClosePromptInformation
+            document.querySelectorAll('.animate-float').forEach(function(el) {
+                setTimeout(function() {
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateX(100%)';
+                    el.style.transition = 'all 0.5s ease';
+                    setTimeout(function() { el.remove(); }, 500);
+                }, 5000);
+            });
+            
+            // RestoreSidebar scrollPosition
+            const sidebar = document.querySelector('.sidebar');
+            const savedScroll = sessionStorage.getItem('sidebarScroll');
+            if (sidebar && savedScroll) {
+                sidebar.scrollTop = parseInt(savedScroll);
+            }
+
+            // CheckAre you sureNeed toNeed toForceChange Password
+            {% if session.get('must_change_password') %}
+            setTimeout(function() {
+                openChangePasswordModal();
+                alert('YouPassword Already Reset，Please ImmediatelyChange PasswordAfter done, useSystem！');
+            }, 500);
+            {% endif %}
+        });
+        
+        // ClickBefore nav linkSaveScrollPosition
+        document.querySelectorAll('.sidebar a, .sidebar .dept-item').forEach(function(el) {
+            el.addEventListener('click', function() {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar) {
+                    sessionStorage.setItem('sidebarScroll', sidebar.scrollTop);
+                }
+            });
+        });
+        function toggleUserMenu() {
+            const m = document.getElementById('userMenu');
+            m.classList.toggle('hidden');
+        }
+
+    </script>
+
+<!-- Change PasswordPopup -->
+<div id="changePasswordModal" class="fixed inset-0 z-50 hidden" style="background:rgba(0,0,0,0.7);">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="glass-card rounded-xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4" style="color:var(--accent);"><i class="fas fa-key mr-2"></i>Change Password</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs mb-1" style="color:var(--text-dim);">Current Password</label>
+                    <input type="text" id="currentPassword" class="w-full px-3 py-2 rounded-lg text-sm" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+                </div>
+                <div>
+                    <label class="block text-xs mb-1" style="color:var(--text-dim);">New Password</label>
+                    <input type="text" id="newPassword" class="w-full px-3 py-2 rounded-lg text-sm" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+                </div>
+                <div>
+                    <label class="block text-xs mb-1" style="color:var(--text-dim);">Confirm New Password</label>
+                    <input type="text" id="confirmPassword" class="w-full px-3 py-2 rounded-lg text-sm" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,212,255,0.2);color:#e2e8f0;">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5">
+                <button onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-lg text-xs" style="background:rgba(100,116,139,0.2);color:var(--text-dim);">Cancel</button>
+                <button onclick="submitChangePassword()" class="tech-btn px-4 py-2 rounded-lg text-white text-xs">Confirm Modify</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Change PasswordPopup
+function openChangePasswordModal() {
+    document.getElementById('changePasswordModal').classList.remove('hidden');
+}
+function closeChangePasswordModal() {
+    document.getElementById('changePasswordModal').classList.add('hidden');
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+}
+async function submitChangePassword() {
+    const current = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('confirmPassword').value;
+    if (!current || !newPass || !confirm) { alert('Please Fill inHaveField'); return; }
+    if (newPass !== confirm) { alert('Two timeInputNew PasswordNot Consistent'); return; }
+    try {
+        const resp = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_password: current, new_password: newPass})
+        });
+        const data = await resp.json();
+        alert(data.message);
+        if (data.success) closeChangePasswordModal();
+    } catch(e) { alert('ModifyFailed: ' + e); }
+}
+
+// ThemeSwitch
+function setTheme(theme, customColors) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('user_theme', theme);
+    if (theme === 'custom' && customColors) {
+        // Also updateNew DOM Property，EnsureHavePageWhen loadingCan read
+        document.documentElement.setAttribute('data-custom-colors', JSON.stringify(customColors));
+        applyCustomTheme(customColors);
+        localStorage.setItem('custom_colors', JSON.stringify(customColors));
+    } else if (theme !== 'custom') {
+        // Switch to presetTheme when，Keep localStorage In  custom_colors（After navigating backNeed toUse）
+        // Also clearEmpty DOM Property，PreventItsHePageFace misread
+        document.documentElement.setAttribute('data-custom-colors', '');
+    }
+    fetch('/api/user-theme', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({theme: theme, custom_colors: customColors || null})
+    });
+}
+
+function applyCustomTheme(c) {
+    var r = document.documentElement.style;
+    var bg = rgbToHex(c.r, c.g, c.b);
+    var bg2 = adjustColor(c.r, c.g, c.b, 15);
+    var accent = bg;
+    var accent2 = adjustColor(c.r, c.g, c.b, -20);
+    var borderRgba = 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',0.2)';
+    var cardBg = 'rgba(' + Math.max(0,c.r-5) + ',' + Math.max(0,c.g-5) + ',' + Math.max(0,c.b-10) + ',0.85)';
+    r.setProperty('--custom-bg-primary', bg);
+    r.setProperty('--custom-bg-secondary', bg2);
+    r.setProperty('--custom-accent', accent);
+    r.setProperty('--custom-accent2', accent2);
+    r.setProperty('--custom-text', '#e2e8f0');
+    r.setProperty('--custom-text-dim', '#94a3b8');
+    r.setProperty('--custom-border', borderRgba);
+    r.setProperty('--custom-card-bg', cardBg);
+}
+
+function rgbToHex(r,g,b) {
+    return '#' + [r,g,b].map(function(v){var h=v.toString(16);return h.length===1?'0'+h:h;}).join('');
+}
+
+function adjustColor(r,g,b,amount) {
+    return '#' + [r+amount,g+amount,b+Math.round(amount*0.6)].map(function(v){
+        v=Math.max(0,Math.min(255,Math.round(v)));var h=v.toString(16);return h.length===1?'0'+h:h;
+    }).join('');
+}
+
+// On page load, restore custom colors if theme is custom (from DOM first, then localStorage)
+(function(){
+    var t = document.documentElement.getAttribute('data-theme');
+    if (t === 'custom') {
+        var cs = document.documentElement.getAttribute('data-custom-colors');
+        if (cs && cs !== 'None' && cs !== '') {
+            try { applyCustomTheme(JSON.parse(cs)); localStorage.setItem('custom_colors', cs); } catch(e){}
+        } else {
+            // Fallback: try localStorage
+            var ls = localStorage.getItem('custom_colors');
+            if (ls) { try { applyCustomTheme(JSON.parse(ls)); } catch(e){} }
+        }
+    }
+})();
+</script>
+
+<!-- upload avatar modal -->
+<div id="avatarUploadModal" class="fixed inset-0 z-50 hidden" style="background:rgba(0,0,0,0.7);">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="glass-card rounded-xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4" style="color:var(--accent);">
+                <i class="fas fa-camera mr-2"></i>UploadAvatar
+            </h3>
+            <div class="text-center mb-4">
+                <div id="avatarPlaceholder" class="w-24 h-24 rounded-full mx-auto mb-3 flex items-center justify-center text-3xl font-bold" style="background:linear-gradient(135deg,var(--accent2),var(--accent));color:var(--bg-primary);">
+                    {{ session.username[0].upper() }}
+                </div>
+                <img id="avatarPreview" src="" class="w-24 h-24 rounded-full mx-auto mb-3 object-cover hidden" style="border:3px solid var(--accent);">
+            </div>
+            <form id="avatarForm">
+                <label class="block w-full tech-btn px-4 py-2.5 rounded-lg text-white text-sm text-center cursor-pointer mb-3">
+                    <i class="fas fa-upload mr-1"></i>SelectImage
+                    <input type="file" id="avatarFileInput" name="file" accept="image/*" class="hidden" onchange="previewAvatar(this)">
+                </label>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeAvatarModal()" class="px-4 py-2 rounded-lg text-xs" style="background:rgba(100,116,139,0.2);color:var(--text-dim);">Cancel</button>
+                    <button type="button" onclick="submitAvatar()" class="tech-btn px-4 py-2 rounded-lg text-white text-xs">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+function openAvatarUploadModal(){var m=document.getElementById("avatarUploadModal");if(m)m.classList.remove("hidden");var p=document.getElementById("avatarPreview"),pl=document.getElementById("avatarPlaceholder");if(p){p.src="";p.style.display="none";}if(pl)pl.style.display="flex";}
+function closeAvatarModal(){var m=document.getElementById("avatarUploadModal");if(m)m.classList.add("hidden");var i=document.getElementById("avatarFileInput");if(i)i.value="";}
+function previewAvatar(input){if(input.files&&input.files[0]){var r=new FileReader();r.onload=function(e){var p=document.getElementById("avatarPreview"),pl=document.getElementById("avatarPlaceholder");if(p){p.src=e.target.result;p.style.display="block";}if(pl)pl.style.display="none";};r.readAsDataURL(input.files[0]);}}
+async function submitAvatar(){var i=document.getElementById("avatarFileInput");if(!i.files||!i.files[0]){alert("Please firstSelectImage");return;}var fd=new FormData();fd.append("file",i.files[0]);try{var resp=await fetch("/api/user/avatar",{method:"POST",body:fd});var data=await resp.json();alert(data.message);if(data.success){closeAvatarModal();location.reload();}}catch(e){alert("UploadFailed: "+e);}}
+</script>
+</body>
+</html>
+

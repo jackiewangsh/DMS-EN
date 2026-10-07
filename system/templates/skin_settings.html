@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="glass-card rounded-xl p-6 mb-6">
+    <h2 class="text-xl font-bold mb-6" style="color:var(--accent);">
+        <i class="fas fa-palette mr-2"></i>SkinSettings
+    </h2>
+    <p class="text-sm mb-6" style="color:var(--text-dim);">Select Your like the interfaceTheme，Or Custom color，Settings Will Auto Save，But some colors may causeShow Text viewNot Clear，Recommended to use presets firstTheme Color</p>
+
+    <!-- TagPageSwitch -->
+    <div class="flex gap-4 mb-6 border-b" style="border-color:var(--border);">
+        <button id="tabPreset" onclick="switchTab('preset')" class="px-5 py-2.5 text-sm font-semibold rounded-t-lg transition-all tab-btn active-tab" style="background:var(--accent);color:#fff;">Preset Theme</button>
+        <button id="tabCustom" onclick="switchTab('custom')" class="px-5 py-2.5 text-sm font-semibold rounded-t-lg transition-all tab-btn" style="background:transparent;color:var(--text-dim);border:1px solid var(--border);">Custom color</button>
+    </div>
+
+    <!-- Preset ThemePanel -->
+    <div id="panelPreset">
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold mb-4" style="color:var(--accent2);">Dark Theme</h3>
+            <div class="grid grid-cols-5 gap-3">
+                <button onclick="setTheme('tech-blue')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-cyan-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0f172a, #0ea5e9);" title="Tech Blue"></button>
+                <button onclick="setTheme('dark-purple')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-purple-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #000000, #333333);" title="Midnight Purple"></button>
+                <button onclick="setTheme('forest-green')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-green-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0d1f0d, #22c55e);" title="Forest Green"></button>
+                <button onclick="setTheme('sunset-orange')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-orange-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1f0a0a, #f97316);" title="Sunset Orange"></button>
+                <button onclick="setTheme('rose-pink')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-pink-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #2d1f2d, #ec4899);" title="Rose Pink"></button>
+                <button onclick="setTheme('ocean-teal')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-teal-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a1f1f, #14b8a6);" title="Aqua"></button>
+                <button onclick="setTheme('midnight-blue')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-indigo-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a0f1f, #6366f1);" title="Midnight Blue"></button>
+                <button onclick="setTheme('golden-yellow')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-yellow-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1f1a0a, #eab308);" title="Golden"></button>
+                <button onclick="setTheme('crimson-red')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-red-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1f0a0a, #ef4444);" title="Scarlet"></button>
+                <button onclick="setTheme('slate-gray')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-gray-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1a1a2e, #64748b);" title="Slate Gray"></button>
+                <button onclick="setTheme('emerald-green')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-emerald-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a1f1a, #10b981);" title="Emerald"></button>
+                <button onclick="setTheme('sky-cyan')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-cyan-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a1a1f, #06b6d4);" title="Sky Blue"></button>
+                <button onclick="setTheme('violet-purple')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-violet-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1a0a2e, #8b5cf6);" title="Violet"></button>
+                <button onclick="setTheme('amber-orange')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-amber-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1f100a, #f59e0b);" title="Amber"></button>
+                <button onclick="setTheme('lime-green')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-lime-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0f1f0a, #84cc16);" title="Lime"></button>
+                <button onclick="setTheme('indigo-blue')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-indigo-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a0f2e, #4f46e5);" title="Indigo"></button>
+                <button onclick="setTheme('pink-rose')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-pink-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #2e0a1a, #f472b6);" title="Pink"></button>
+                <button onclick="setTheme('cyan-blue')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-blue-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #0a1a2e, #3b82f6);" title="Cyan Blue"></button>
+                <button onclick="setTheme('orange-red')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-orange-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #2e0f0a, #f97316);" title="Orange Red"></button>
+                <button onclick="setTheme('neutral-gray')" class="w-12 h-12 rounded-lg border-2 border-white hover:border-gray-300 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #1f1f1f, #737373);" title="In Gray"></button>
+            </div>
+        </div>
+
+        <div>
+            <h3 class="text-lg font-semibold mb-4" style="color:var(--accent2);">Light Theme</h3>
+            <div class="grid grid-cols-5 gap-3">
+                <button onclick="setTheme('light-white')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #ffffff, #f8fafc);" title="Pure White"></button>
+                <button onclick="setTheme('light-cream')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #fffbeb, #fef3c7);" title="Cream"></button>
+                <button onclick="setTheme('light-blue')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #f0f9ff, #e0f2fe);" title="Days Empty Blue"></button>
+                <button onclick="setTheme('light-green')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #f0fdf4, #dcfce7);" title="Mint Green"></button>
+                <button onclick="setTheme('light-purple')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #faf5ff, #f3e8ff);" title="Lavender"></button>
+                <button onclick="setTheme('light-orange')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #fff7ed, #ffedd5);" title="Peach"></button>
+                <button onclick="setTheme('light-rose')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #fff1f2, #ffe4e6);" title="Rose"></button>
+                <button onclick="setTheme('light-gray')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #f8fafc, #e2e8f0);" title="Slate"></button>
+                <button onclick="setTheme('light-teal')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #ecfeff, #cffafe);" title="Cyan"></button>
+                <button onclick="setTheme('light-indigo')" class="w-12 h-12 rounded-lg border-2 border-gray-300 hover:border-gray-500 hover:scale-110 transition-all theme-swatch" style="background:linear-gradient(135deg, #eef2ff, #e0e7ff);" title="Indigo"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom color panel -->
+    <div id="panelCustom" style="display:none;">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Left：ColorSelectTool -->
+            <div class="flex-shrink-0">
+                <div class="glass-card rounded-xl p-5" style="border:1px solid var(--border);">
+                    <h3 class="text-base font-semibold mb-4" style="color:var(--accent);">Select Color</h3>
+
+                    <!-- Hue/AndDegree area (Canvas) -->
+                    <div class="relative mb-4">
+                        <canvas id="colorCanvas" width="280" height="200"
+                            class="rounded-lg cursor-crosshair"
+                            style="display:block;border:1px solid var(--border);touch-action:none;">
+                        </canvas>
+                        <!-- Picker indicator -->
+                        <div id="colorPicker" class="absolute w-4 h-4 rounded-full border-2 border-white shadow-lg pointer-events-none"
+                            style="transform:translate(-50%,-50%);top:0;left:0;"
+                        ></div>
+                    </div>
+
+                    <!-- Value slider -->
+                    <div class="mb-5">
+                        <label class="text-xs mb-1.5 block" style="color:var(--text-dim);">Value</label>
+                        <div class="relative">
+                            <input type="range" id="brightnessSlider" min="0" max="100" value="100"
+                                class="w-full h-5 rounded cursor-pointer appearance-none"
+                                style="background:linear-gradient(to right, #000, currentColor);">
+                            <div id="brightnessThumb" class="absolute top-0 w-4 h-4 rounded-full border-2 border-white shadow pointer-events-none"
+                                style="transform:translate(-50%,-50%);left:100%;top:50%;"
+                            ></div>
+                        </div>
+                    </div>
+
+                    <!-- RGB Input box -->
+                    <div class="space-y-2.5">
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs w-16" style="color:var(--text-dim);">Red(R):</label>
+                            <input type="number" id="customR" min="0" max="255" value="0"
+                                class="flex-1 px-2.5 py-1.5 rounded text-sm"
+                                style="background:var(--bg-secondary);color:var(--text);border:1px solid var(--border);outline:none;">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs w-16" style="color:var(--text-dim);">Green(G):</label>
+                            <input type="number" id="customG" min="0" max="255" value="212"
+                                class="flex-1 px-2.5 py-1.5 rounded text-sm"
+                                style="background:var(--bg-secondary);color:var(--text);border:1px solid var(--border);outline:none;">
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs w-16" style="color:var(--text-dim);">Blue(B):</label>
+                            <input type="number" id="customB" min="0" max="255" value="255"
+                                class="flex-1 px-2.5 py-1.5 rounded text-sm"
+                                style="background:var(--bg-secondary);color:var(--text);border:1px solid var(--border);outline:none;">
+                        </div>
+                    </div>
+
+                    <!-- HEX Show -->
+                    <div class="mt-3 flex items-center gap-3">
+                        <label class="text-xs w-16" style="color:var(--text-dim);">HEX:</label>
+                        <input type="text" id="customHex" readonly
+                            class="flex-1 px-2.5 py-1.5 rounded text-sm font-mono"
+                            style="background:var(--bg-secondary);color:var(--text);border:1px solid var(--border);">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right：Preview + Operation -->
+            <div class="flex-1 flex flex-col gap-5">
+                <!-- PreviewCard -->
+                <div class="glass-card rounded-xl p-5" style="border:1px solid var(--border);">
+                    <h3 class="text-base font-semibold mb-4" style="color:var(--accent);">Preview Effect</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- New AddPreview -->
+                        <div id="previewNew" class="rounded-lg p-4 flex flex-col items-center justify-center min-h-[120px] border-2 border-dashed"
+                             style="border-color:var(--border);background:var(--bg-secondary);">
+                            <span class="text-xs mb-2" style="color:var(--text-dim);">New Add</span>
+                            <div id="previewNewColor" class="w-16 h-16 rounded-lg shadow-lg" style="background:#00d4ff;"></div>
+                        </div>
+                        <!-- CurrentPreview -->
+                        <div id="previewCurrent" class="rounded-lg p-4 flex flex-col items-center justify-center min-h-[120px] border-2 border-dashed"
+                             style="border-color:var(--border);background:var(--bg-secondary);">
+                            <span class="text-xs mb-2" style="color:var(--text-dim);">Current</span>
+                            <div id="previewCurrentColor" class="w-16 h-16 rounded-lg shadow-lg" style="background:var(--accent);"></div>
+                        </div>
+                    </div>
+                    <!-- TextComparePreview -->
+                    <div class="mt-4 rounded-lg p-4" id="previewTextBg" style="background:#0a1628;">
+                        <p class="text-sm font-semibold mb-1" id="previewTextPrimary" style="color:#e2e8f0;">Main text color example Primary Text</p>
+                        <p class="text-xs" id="previewTextDim" style="color:#94a3b8;"> timeNeed toText color example Secondary Text</p>
+                    </div>
+                </div>
+
+                <!-- ConfirmButton -->
+                <div class="flex gap-3">
+                    <button onclick="applyCustomThemeAndSave()"
+                        class="flex-1 tech-btn px-6 py-3 rounded-lg text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+                        <i class="fas fa-check mr-2"></i>ConfirmApply
+                    </button>
+                    <button onclick="switchTab('preset')"
+                        class="px-6 py-3 rounded-lg text-sm font-semibold transition-colors"
+                        style="background:rgba(100,116,139,0.2);color:var(--text-dim);">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.tab-btn { cursor:pointer; }
+#colorCanvas { background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #80f 83%, #f00 100%); }
+#brightnessSlider {
+    -webkit-appearance: none;
+    background: linear-gradient(to right, #000, var(--accent, #00d4ff));
+}
+#brightnessSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+#brightnessSlider::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid rgba(0,0,0,0.3);
+    cursor: pointer;
+}
+</style>
+
+<script>
+// ====== Tab Switching ======
+function switchTab(tab) {
+    var preset = document.getElementById('panelPreset');
+    var custom = document.getElementById('panelCustom');
+    var tPreset = document.getElementById('tabPreset');
+    var tCustom = document.getElementById('tabCustom');
+
+    if (tab === 'preset') {
+        preset.style.display = '';
+        custom.style.display = 'none';
+        tPreset.style.background = 'var(--accent)';
+        tPreset.style.color = '#fff';
+        tPreset.style.border = 'none';
+        tCustom.style.background = 'transparent';
+        tCustom.style.color = 'var(--text-dim)';
+        tCustom.style.border = '1px solid var(--border)';
+    } else {
+        preset.style.display = 'none';
+        custom.style.display = '';
+        tCustom.style.background = 'var(--accent)';
+        tCustom.style.color = '#fff';
+        tCustom.style.border = 'none';
+        tPreset.style.background = 'transparent';
+        tPreset.style.color = 'var(--text-dim)';
+        tPreset.style.border = '1px solid var(--border)';
+        initColorPicker();
+    }
+}
+
+// ====== Color Picker State ======
+var pickerHue = 180;       // 0-360
+var pickerSat = 100;       // 0-100
+var pickerVal = 100;       // 0-100
+var isDraggingCanvas = false;
+
+function initColorPicker() {
+    // Restore from saved custom colors if available
+    var saved = localStorage.getItem('custom_colors');
+    if (saved) {
+        try {
+            var c = JSON.parse(saved);
+            var hsv = rgbToHsv(c.r, c.g, c.b);
+            pickerHue = hsv.h;
+            pickerSat = hsv.s;
+            pickerVal = hsv.v;
+        } catch(e) {}
+    }
+
+    drawColorCanvas();
+    updateFromHSV();
+}
+
+// ====== Canvas Drawing ======
+function drawColorCanvas() {
+    var canvas = document.getElementById('colorCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var w = canvas.width;
+    var h = canvas.height;
+
+    // Full gamut：X coordinate=Hue(0-360)，Y coordinate=AndDegree(0-100)，Brightness fixed100%
+    var imgData = ctx.createImageData(w, h);
+    var data = imgData.data;
+
+    for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+            var hue = (x / w) * 360;       // 0..360 hue
+            var sat = (1 - y / h) * 100;    // 100..0 saturation (Up=100%Solid color，Down=0%Gray)
+            var val = 100;                   // Fixed100%Brightness，ShowMost vivid
+            var rgb = hsvToRgb(hue, sat, val);
+            var idx = (y * w + x) * 4;
+            data[idx] = rgb.r;
+            data[idx+1] = rgb.g;
+            data[idx+2] = rgb.b;
+            data[idx+3] = 255;
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    // Update picker position based on current hue/saturation
+    updatePickerPosition();
+
+    // Update brightness slider shows current hue at different brightness levels
+    var hueRgb = hsvToRgb(pickerHue, 100, 100);
+    var hueHex = rgbToHex(hueRgb.r, hueRgb.g, hueRgb.b);
+    var slider = document.getElementById('brightnessSlider');
+    if (slider) {
+        // Slider: bottom=black -> top=current hue color
+        slider.style.background = 'linear-gradient(to right, #000, ' + hueHex + ')';
+    }
+}
+
+// ====== HSV <-> RGB Conversion ======
+function hsvToRgb(h, s, v) {
+    s /= 100; v /= 100;
+    var c = v * s;
+    var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    var m = v - c;
+    var r, g, b;
+    if (h < 60) { r=c; g=x; b=0; }
+    else if (h < 120) { r=x; g=c; b=0; }
+    else if (h < 180) { r=0; g=c; b=x; }
+    else if (h < 240) { r=0; g=x; b=c; }
+    else if (h < 300) { r=x; g=0; b=c; }
+    else { r=c; g=0; b=x; }
+    return {
+        r: Math.round((r+m)*255),
+        g: Math.round((g+m)*255),
+        b: Math.round((b+m)*255)
+    };
+}
+
+function rgbToHsv(r, g, b) {
+    r/=255; g/=255; b/=255;
+    var max = Math.max(r,g,b), min = Math.min(r,g,b);
+    var d = max - min;
+    var h, s, v = max;
+    if (d === 0) h = 0;
+    else if (max === r) h = 60 * (((g-b)/d) % 6);
+    else if (max === g) h = 60 * ((b-r)/d + 2);
+    else h = 60 * ((r-g)/d + 4);
+    if (max === 0) s = 0;
+    else s = d / max;
+    if (h < 0) h += 360;
+    return { h: Math.round(h), s: Math.round(s*100), v: Math.round(v*100) };
+}
+
+function rgbToHex(r,g,b) {
+    return '#' + [r,g,b].map(function(v){
+        var h=Math.max(0,Math.min(255,Math.round(v))).toString(16);
+        return h.length===1?'0'+h:h;
+    }).join('');
+}
+
+// ====== UI Updates ======
+function updateFromHSV() {
+    var rgb = hsvToRgb(pickerHue, pickerSat, pickerVal);
+
+    // Apply brightness
+    var factor = pickerVal / 100;
+    var finalR = Math.round(rgb.r * factor);
+    var finalG = Math.round(rgb.g * factor);
+    var finalB = Math.round(rgb.b * factor);
+
+    // Clamp
+    finalR = Math.max(0, Math.min(255, finalR));
+    finalG = Math.max(0, Math.min(255, finalG));
+    finalB = Math.max(0, Math.min(255, finalB));
+
+    // Update RGB inputs
+    document.getElementById('customR').value = finalR;
+    document.getElementById('customG').value = finalG;
+    document.getElementById('customB').value = finalB;
+    document.getElementById('customHex').value = rgbToHex(finalR, finalG, finalB);
+
+    // Update preview
+    var previewColor = rgbToHex(finalR, finalG, finalB);
+    document.getElementById('previewNewColor').style.background = previewColor;
+
+    // Text preview bg
+    var darkBg = adjustForBg(finalR, finalG, finalB, -10);
+    document.getElementById('previewTextBg').style.background = darkBg;
+    document.getElementById('previewTextPrimary').style.color = '#e2e8f0';
+    document.getElementById('previewTextDim').style.color = '#94a3b8';
+
+    // Update picker position on canvas
+    updatePickerPosition();
+
+    // Update brightness thumb
+    var thumb = document.getElementById('brightnessThumb');
+    if (thumb) thumb.style.left = pickerVal + '%';
+
+    // Store current values for apply
+    window._customRgb = { r: finalR, g: finalG, b: finalB };
+}
+
+function adjustForBg(r,g,b,amount) {
+    return '#' + [r+amount, g+amount, b+Math.round(amount*0.6)].map(function(v){
+        v=Math.max(0,Math.min(255,Math.round(v))); var h=v.toString(16);
+        return h.length===1?'0'+h:h;
+    }).join('');
+}
+
+function updatePickerPosition() {
+    var canvas = document.getElementById('colorCanvas');
+    var picker = document.getElementById('colorPicker');
+    if (!canvas || !picker) return;
+    // NewCoordinate system：X=Hue(0-360)，Y=AndDegree(100-0)
+    var x = (pickerHue / 360) * canvas.width;
+    var y = ((100 - pickerSat) / 100) * canvas.height;
+    picker.style.left = x + 'px';
+    picker.style.top = y + 'px';
+    picker.style.borderColor = pickerSat > 50 ? '#fff' : '#000';
+}
+
+// ====== Canvas Mouse/Touch Events ======
+function getCanvasPos(e, canvas) {
+    var rect = canvas.getBoundingClientRect();
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: Math.max(0, Math.min(canvas.width, clientX - rect.left)),
+        y: Math.max(0, Math.min(canvas.height, clientY - rect.top))
+    };
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var canvas = document.getElementById('colorCanvas');
+    if (!canvas) return;
+
+    function handleStart(e) {
+        e.preventDefault();
+        isDraggingCanvas = true;
+        handleMove(e);
+    }
+
+    function handleMove(e) {
+        if (!isDraggingCanvas) return;
+        e.preventDefault();
+        var pos = getCanvasPos(e, canvas);
+        // NewCoordinate system：X=Hue(0-360)，Y=AndDegree(100-0)
+        pickerHue = (pos.x / canvas.width) * 360;
+        pickerSat = (1 - pos.y / canvas.height) * 100;
+        pickerHue = Math.max(0, Math.min(360, pickerHue));
+        pickerSat = Math.max(0, Math.min(100, pickerSat));
+        drawColorCanvas();
+        updateFromHSV();
+    }
+
+    function handleEnd() {
+        isDraggingCanvas = false;
+    }
+
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseup', handleEnd);
+    canvas.addEventListener('mouseleave', handleEnd);
+    canvas.addEventListener('touchstart', handleStart, {passive:false});
+    canvas.addEventListener('touchmove', handleMove, {passive:false});
+    canvas.addEventListener('touchend', handleEnd);
+
+    // Brightness slider
+    var bSlider = document.getElementById('brightnessSlider');
+    if (bSlider) {
+        bSlider.addEventListener('input', function() {
+            // Brightness slider: Adjust brightness(Val)，Not Change hue(Hue)AndAndDegree(Sat)
+            pickerVal = parseInt(this.value);
+            updateFromHSV();
+        });
+    }
+
+    // RGB input changes
+    ['customR','customG','customB'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() {
+            var r = parseInt(document.getElementById('customR').value)||0;
+            var g = parseInt(document.getElementById('customG').value)||0;
+            var b = parseInt(document.getElementById('customB').value)||0;
+            var hsv = rgbToHsv(
+                Math.max(0,Math.min(255,r)),
+                Math.max(0,Math.min(255,g)),
+                Math.max(0,Math.min(255,b))
+            );
+            pickerHue = hsv.h;
+            pickerSat = hsv.s;
+            pickerVal = hsv.v;
+            drawColorCanvas();
+            updateFromHSV();
+        });
+    });
+
+    // Set current preview
+    var curAccent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    var prevCur = document.getElementById('previewCurrentColor');
+    if (prevCur && curAccent) prevCur.style.background = curAccent;
+});
+
+// ====== Apply Custom Theme & Save ======
+function applyCustomThemeAndSave() {
+    if (!window._customRgb) {
+        alert('Please firstSelectOne itemsColor');
+        return;
+    }
+
+    var colors = window._customRgb;
+
+    // Apply immediately via base.html's setTheme
+    if (typeof setTheme === 'function') {
+        setTheme('custom', colors);
+    } else {
+        // Fallback: direct application
+        applyCustomTheme(colors);
+        document.documentElement.setAttribute('data-theme', 'custom');
+        localStorage.setItem('user_theme', 'custom');
+        localStorage.setItem('custom_colors', JSON.stringify(colors));
+
+        // Save to server
+        fetch('/api/user-theme', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({theme:'custom', custom_colors:colors})
+        });
+    }
+
+    // Visual feedback
+    var btn = event.target.closest('button');
+    if (btn) {
+        var origText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check mr-2"></i>AlreadyApply！';
+        btn.style.background = '#22c55e';
+        setTimeout(function() {
+            btn.innerHTML = origText;
+            btn.style.background = '';
+        }, 2000);
+    }
+}
+
+// Override setTheme to save to server (for preset themes)
+var _origSetTheme = window.setTheme;
+window.setTheme = function(theme) {
+    if (_origSetTheme) _origSetTheme(theme);
+
+    fetch('/api/user/theme', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({theme: theme})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            var btn = event.target;
+            if (btn) {
+                var originalBorder = btn.style.borderColor;
+                btn.style.borderColor = '#4ade80';
+                btn.style.boxShadow = '0 0 10px rgba(74,222,128,0.5)';
+                setTimeout(function() {
+                    btn.style.borderColor = originalBorder;
+                    btn.style.boxShadow = '';
+                }, 1000);
+            }
+        }
+    })
+    .catch(function(e) {
+        console.error('Failed to save theme:', e);
+    });
+};
+</script>
+{% endblock %}

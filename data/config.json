@@ -1,0 +1,15 @@
+{
+  "smtp": {
+    "enabled": true,
+    "host": "smtp.126.com",
+    "port": "465",
+    "username": "svaedms@126.com",
+    "password": "EMyUipiPfCTjmHMb",
+    "from_addr": "svaedms@126.com",
+    "use_tls": true
+  },
+  "scheduler": {
+    "weekly_index_enabled": false,
+    "weekly_cleanup_enabled": false
+  }
+}

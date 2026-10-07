@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-5 flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-cog mr-2"></i>Department And Type Manage
+    </h1>
+</div>
+
+<!-- Prompt -->
+<div class="mb-4 px-4 py-3 rounded-lg text-sm" style="background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15); color:var(--text-dim);">
+    <i class="fas fa-info-circle mr-1" style="color:var(--accent);"></i>
+    LeftSelectDepartment，Right managementThisDepartmentFile Type。Can from existingHave 7 TypeTypeIn AddOrRemove。
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- ========== Left：DepartmentList ========== -->
+    <div class="glass-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold" style="color:var(--accent);">
+                <i class="fas fa-building mr-2"></i>DepartmentList
+            </h2>
+            <span class="text-xs" style="color:var(--text-dim);">↑↓ Adjust order</span>
+        </div>
+
+        <!-- AddDepartment -->
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="newDeptName" placeholder="Input New Department Name"
+                   class="flex-1 px-3 py-2 rounded-lg text-sm"
+                   style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;"
+                   onkeydown="if(event.key==='Enter')addDept()">
+            <button onclick="addDept()" class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold">
+                <i class="fas fa-plus mr-1"></i>Add
+            </button>
+        </div>
+
+        <!-- DepartmentList -->
+        <div id="deptList" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+    </div>
+
+    <!-- ========== Right：DepartmentFile Type ========== -->
+    <div class="glass-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-bold" style="color:var(--accent);">
+                <i class="fas fa-tags mr-2"></i>
+                <span id="typePanelTitle">File Type Manage</span>
+            </h2>
+        </div>
+
+        <!-- Not selectedDepartment -->
+        <div id="typeHint" class="text-center py-16 rounded-lg" style="background:rgba(0,0,0,0.15);">
+            <i class="fas fa-mouse-pointer text-3xl mb-3 opacity-20"></i>
+            <div class="text-sm" style="color:var(--text-dim);">Please firstSelect One At Left itemsDepartment</div>
+        </div>
+
+        <!-- Already SelectedDepartment → Can manage -->
+        <div id="typeManager" class="hidden">
+            <!-- DepartmentTag -->
+            <div class="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg"
+                 style="background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2);">
+                <i class="fas fa-building text-xs" style="color:var(--accent);"></i>
+                <span class="text-sm font-medium" style="color:var(--accent);" id="currentDeptLabel">-</span>
+                <span class="text-xs ml-auto" style="color:var(--text-dim);">
+                    Total <span id="typeCountLabel">0</span>  itemsType
+                </span>
+            </div>
+
+            <!-- AddType：DropdownSelect -->
+            <div class="flex gap-2 mb-3">
+                <select id="newTypeSelect"
+                        class="flex-1 px-3 py-2 rounded-lg text-sm"
+                        style="background:rgba(0,0,0,0.3); border:1px solid rgba(0,212,255,0.2); color:#e2e8f0; outline:none;">
+                    <option value="">— Type In From Dropdown Select To Add —</option>
+                </select>
+                <button onclick="addDeptType()" class="tech-btn px-4 py-2 rounded-lg text-white text-sm font-semibold">
+                    <i class="fas fa-plus mr-1"></i>Add
+                </button>
+                
+            </div>
+
+            <!-- AlreadyHaveTypeList -->
+            <div id="typeList" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== CurrentSelectedDepartment =====
+let selectedDept = null;
+
+// ===== DepartmentList =====
+async function loadDepts() {
+    try {
+        const data = await fetch('/api/departments').then(r => r.json());
+        renderDepts(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderDepts(depts) {
+    const el = document.getElementById('deptList');
+    if (!depts || !depts.length) {
+        el.innerHTML = '<div class="text-center py-6 text-sm" style="color:var(--text-dim);">No No Department</div>';
+        return;
+    }
+    el.innerHTML = depts.map(d => {
+        const isActive = selectedDept === d.name;
+        return `
+        <div class="flex items-center justify-between p-3 rounded-lg group cursor-pointer transition-all"
+             style="background:${isActive ? 'rgba(0,212,255,0.12)' : 'rgba(0,0,0,0.2)'}; border:1px solid ${isActive ? 'rgba(0,212,255,0.35)' : 'transparent'};"
+             onclick="selectDept('${d.name}')">
+            <div class="flex items-center gap-2">
+                <button onclick="event.stopPropagation(); moveDept('${d.id}', 'up')"
+                        class="p-1 rounded hover:bg-white/10 text-xs" style="color:var(--text-dim);" title="Move up">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+                <button onclick="event.stopPropagation(); moveDept('${d.id}', 'down')"
+                        class="p-1 rounded hover:bg-white/10 text-xs" style="color:var(--text-dim);" title="Move down">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <i class="fas fa-building text-sm" style="color:var(--accent);"></i>
+                <span class="text-sm font-medium">${d.name}</span>
+                ${isActive ? '<span class="text-xs px-1.5 py-0.5 rounded" style="background:rgba(0,212,255,0.15);color:var(--accent);">Already Selected</span>' : ''}
+            </div>
+            <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="event.stopPropagation(); editDept('${d.id}', '${d.name}')"
+                        class="px-2 py-1 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--accent);" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="event.stopPropagation(); deleteDept('${d.id}')"
+                        class="px-2 py-1 rounded text-xs" style="background:rgba(239,68,68,0.1); color:#f87171;" title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function selectDept(name) {
+    selectedDept = name;
+    loadDepts();
+    loadDeptTypes(name);
+}
+
+async function addDept() {
+    const name = document.getElementById('newDeptName').value.trim();
+    if (!name) { alert('Please enterDepartmentName'); return; }
+    const resp = await fetch('/api/departments', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name})
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) {
+        document.getElementById('newDeptName').value = '';
+        loadDepts();
+    }
+}
+
+async function moveDept(id, direction) {
+    const resp = await fetch('/api/departments', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id, action: 'move', direction})
+    });
+    const data = await resp.json();
+    if (data.success) loadDepts();
+}
+
+async function editDept(id, oldName) {
+    const newName = prompt('Please enterNewDepartmentName：', oldName);
+    if (!newName || newName.trim() === oldName) return;
+    const resp = await fetch('/api/departments', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id, name: newName.trim()})
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) {
+        if (selectedDept === oldName) {
+            selectedDept = newName.trim();
+        }
+        loadDepts();
+    }
+}
+
+async function deleteDept(id) {
+    if (!confirm('ConfirmNeed toDeleteThisDepartment?？')) return;
+    const resp = await fetch('/api/departments', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) {
+        if (selectedDept) {
+            selectedDept = null;
+            document.getElementById('typeHint').classList.remove('hidden');
+            document.getElementById('typeManager').classList.add('hidden');
+        }
+        loadDepts();
+    }
+}
+
+// ===== DepartmentFile Type =====
+async function loadDeptTypes(deptName) {
+    if (!deptName) return;
+    document.getElementById('typeHint').classList.add('hidden');
+    document.getElementById('typeManager').classList.remove('hidden');
+    document.getElementById('currentDeptLabel').textContent = deptName;
+
+    try {
+        const data = await fetch('/api/dept-file-types?dept=' + encodeURIComponent(deptName)).then(r => r.json());
+        // data = { owned: [...], available: [...] }
+        renderDeptTypes(data);
+    } catch(e) { console.error(e); }
+}
+
+function renderDeptTypes(data) {
+    const owned = data.owned || [];
+    const available = data.available || [];
+
+    document.getElementById('typeCountLabel').textContent = owned.length;
+
+    // Dropdown box：OnlyShowOptionalType
+    const sel = document.getElementById('newTypeSelect');
+    if (available.length === 0) {
+        sel.innerHTML = '<option value="">— All Types Already Added —</option>';
+        sel.disabled = true;
+    } else {
+        sel.innerHTML = '<option value="">— Type In From Dropdown Select To Add —</option>' +
+            available.map(t => `<option value="${t}">${t}</option>`).join('');
+        sel.disabled = false;
+    }
+
+    // AlreadyHaveTypeList
+    const el = document.getElementById('typeList');
+    if (!owned.length) {
+        el.innerHTML = '<div class="text-center py-6 text-sm" style="color:var(--text-dim);">This Department No No File Type</div>';
+        return;
+    }
+    el.innerHTML = owned.map(t => `
+        <div class="flex items-center justify-between p-3 rounded-lg group" style="background:rgba(0,0,0,0.2);">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-tag text-sm" style="color:var(--accent);"></i>
+                <span class="text-sm">${t.name}</span>
+            </div>
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity">
+                <button onclick="removeDeptType('${t.id}', '${t.name}')"
+                        class="px-2 py-1 rounded text-xs" style="background:rgba(239,68,68,0.1); color:#f87171;" title="Remove From This Department">
+                    <i class="fas fa-trash-alt mr-1"></i>Remove
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function addDeptType() {
+    if (!selectedDept) {
+        alert('Please firstSelectDepartment'); return;
+    }
+    const sel = document.getElementById('newTypeSelect');
+    const name = sel.value;
+    if (!name) { alert('Please From dropdownListIn SelectOne itemsType'); return; }
+    const resp = await fetch('/api/dept-file-types', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({department: selectedDept, name})
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) loadDeptTypes(selectedDept);
+}
+
+async function removeDeptType(id, name) {
+    if (!confirm(`ConfirmNeed to fromThisDepartmentRemove「${name}」?？`)) return;
+    const resp = await fetch('/api/dept-file-types', {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id})
+    });
+    const data = await resp.json();
+    alert(data.message);
+    if (data.success) loadDeptTypes(selectedDept);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDepts();
+});
+</script>
+{% endblock %}

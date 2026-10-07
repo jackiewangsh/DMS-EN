@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex items-center justify-between mb-5">
+    <div>
+        <h1 class="text-lg font-bold" style="color:var(--accent);">
+            <i class="fas fa-bell mr-2"></i>Notification In 
+        </h1>
+        {% if unread > 0 %}
+        <p class="text-sm mt-1" style="color:var(--text-dim);">
+            YouHave <span class="font-bold" style="color:#f87171;">{{ unread }}</span> UnreadNotification
+        </p>
+        {% endif %}
+    </div>
+    {% if unread > 0 %}
+    <button onclick="markAllRead()" class="tech-btn px-4 py-2 rounded-lg text-white text-sm">
+        <i class="fas fa-check-double mr-1"></i>AllMarkForAlreadyRead
+    </button>
+    {% endif %}
+</div>
+
+{% if notifications %}
+<div class="space-y-3">
+    {% for n in notifications %}
+    <div class="glass-card rounded-xl p-4 flex items-start gap-4 {% if not n.is_read %}border-l-2{% endif %}"
+         style="{% if not n.is_read %}border-color:var(--accent);{% endif %}">
+        <!-- Icon -->
+        <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+             style="background:{% if not n.is_read %}rgba(0,212,255,0.15);{% else %}rgba(100,100,100,0.1);{% endif %};">
+            <i class="fas {% if n.type=='workflow' %}fa-file-signature{% else %}fa-bell{% endif %} text-sm"
+               style="color:{% if not n.is_read %}var(--accent);{% else %}var(--text-dim);{% endif %};"></i>
+        </div>
+        <!-- Content -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="text-sm font-bold {% if not n.is_read %}style="color:var(--text);"{% endif %}"
+                    style="{% if not n.is_read %}font-weight:600;{% else %}color:var(--text-dim);font-weight:500;{% endif %}">
+                    {{ n.title }}
+                </h3>
+                <span class="text-xs" style="color:var(--text-dim);">{{ n.created_at[:16] }}</span>
+            </div>
+            <p class="text-sm mb-2" style="color:var(--text-dim);">{{ n.content }}</p>
+            <div class="flex items-center gap-3">
+                {% if n.workflow_id %}
+                <a href="{{ url_for('workflow_detail', workflow_id=n.workflow_id) }}"
+                   class="text-xs px-3 py-1 rounded-lg transition-colors"
+                   style="background:rgba(0,212,255,0.1); color:var(--accent);">
+                    <i class="fas fa-external-link-alt mr-1"></i>ViewDetail
+                </a>
+                {% endif %}
+                {% if not n.is_read %}
+                <button onclick="markRead('{{ n.id }}')"
+                        class="text-xs px-3 py-1 rounded-lg transition-colors"
+                        style="background:rgba(100,100,100,0.1); color:var(--text-dim);">
+                    <i class="fas fa-check mr-1"></i>MarkForAlreadyRead
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Unread dot -->
+        {% if not n.is_read %}
+        <div class="flex-shrink-0 w-2 h-2 rounded-full mt-2" style="background:var(--accent);"></div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="glass-card rounded-xl p-12 text-center">
+    <i class="fas fa-bell-slash text-4xl mb-4" style="color:var(--text-dim); opacity:0.4;"></i>
+    <div class="text-base mb-2" style="color:var(--text-dim);">No No Notification</div>
+    <div class="text-sm" style="color:var(--text-dim); opacity:0.6;">Received Approval Notification whenWill Show Here</div>
+</div>
+{% endif %}
+
+<script>
+async function markRead(id) {
+    await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id })
+    });
+    location.reload();
+}
+
+async function markAllRead() {
+    await fetch('/api/notifications/mark-read', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    });
+    location.reload();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-4 flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-lg font-bold" style="color:var(--accent);">
+        <i class="fas fa-clipboard-list mr-2"></i>Operation Log
+    </h1>
+    <button onclick="clearAllLogs()" id="clearBtn" class="px-4 py-2 rounded-lg text-sm font-medium" style="background:rgba(239,68,68,0.2); color:#f87171; border:none; cursor:pointer;">
+        <i class="fas fa-trash-alt mr-1"></i>ClearAllRecords
+    </button>
+</div>
+
+<div class="glass-card rounded-xl overflow-hidden">
+    {% if logs %}
+    <div class="px-5 py-3 text-xs flex items-center justify-between flex-wrap gap-3" style="border-bottom:1px solid rgba(0,212,255,0.1);">
+        <span style="color:var(--text-dim);">Total {{ total }} Records，Currently No.  {{ page }}/{{ total_pages }} Page</span>
+        <div class="flex items-center gap-2">
+            {% if page > 1 %}
+            <a href="?page=1" class="px-3 py-1.5 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--text-dim); text-decoration:none;">First</a>
+            <a href="?page={{ page - 1 }}" class="px-3 py-1.5 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--text-dim); text-decoration:none;">Previous</a>
+            {% endif %}
+            {% for p in page_range %}
+                {% if p == page %}
+                <span class="px-3 py-1.5 rounded text-xs font-medium" style="background:var(--accent); color:#fff;">{{ p }}</span>
+                {% else %}
+                <a href="?page={{ p }}" class="px-3 py-1.5 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--text-dim); text-decoration:none;">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}" class="px-3 py-1.5 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--text-dim); text-decoration:none;">Next</a>
+            <a href="?page={{ total_pages }}" class="px-3 py-1.5 rounded text-xs" style="background:rgba(0,212,255,0.1); color:var(--text-dim); text-decoration:none;">Last</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs" style="background:rgba(0,0,0,0.2); color:var(--text-dim);">
+                    <th class="px-5 py-3 font-medium"><i class="fas fa-user mr-1"></i>Operation User</th>
+                    <th class="px-4 py-3 font-medium"><i class="fas fa-cog mr-1"></i>Operation Type</th>
+                    <th class="px-4 py-3 font-medium"><i class="fas fa-info-circle mr-1"></i>Operation Detail</th>
+                    <th class="px-4 py-3 font-medium"><i class="fas fa-desktop mr-1"></i>IPAddress</th>
+                    <th class="px-4 py-3 font-medium"><i class="fas fa-clock mr-1"></i>Operation Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr class="border-t hover:opacity-80 transition-opacity" style="border-color:rgba(255,255,255,0.05);">
+                    <td class="px-5 py-3 font-medium">{{ log.username or '(Deleted User)' }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs"
+                              style="background:rgba(0,212,255,0.15); color:var(--accent);">
+                            {{ log.action }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim); max-width:300px;">
+                        <div class="truncate">{{ log.detail or '-' }}</div>
+                    </td>
+                    <td class="px-4 py-3 text-xs font-mono" style="color:var(--text-dim);">{{ log.ip_address or '-' }}</td>
+                    <td class="px-4 py-3 text-xs" style="color:var(--text-dim);">{{ log.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="px-5 py-3 border-t" style="border-color:rgba(0,212,255,0.1);"></div>
+    {% else %}
+    <div class="text-center py-20" style="color:var(--text-dim);">
+        <i class="fas fa-clipboard-list text-4xl mb-4 opacity-20"></i>
+        <div class="text-sm">No No Operation Log</div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function clearAllLogs() {
+    if (!confirm('ConfirmNeed toClearHaveOperation Log?？ThisOperationCannot Restore！')) return;
+    
+    const btn = document.getElementById('clearBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>ClearIn ...';
+    
+    fetch('/api/logs/clear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('AlreadyClear ' + data.deleted_count + ' Records');
+            location.reload();
+        } else {
+            alert('ClearFailed: ' + (data.message || 'UnknownError'));
+        }
+    })
+    .catch(e => alert('ClearFailed: ' + e))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-trash-alt mr-1"></i>ClearAllRecords';
+    });
+}
+</script>
+{% endblock %}

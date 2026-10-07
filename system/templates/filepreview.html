@@ -1,0 +1,185 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Preview - {{ file_name|e }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            background: #1a1a2e; 
+            color: #eee;
+            min-height: 100vh;
+        }
+        .preview-header {
+            background: rgba(30, 30, 50, 0.95);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .preview-header h1 {
+            font-size: 1.3rem;
+            color: #fff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 600px;
+        }
+        .preview-header .actions {
+            display: flex;
+            gap: 10px;
+        }
+        .preview-header .actions a {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+        .preview-header .actions a:hover {
+            background: rgba(255,255,255,0.35);
+        }
+        .preview-body {
+            padding: 20px;
+        }
+        iframe {
+            width: 100%;
+            height: calc(100vh - 100px);
+            border: none;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        iframe.no-header {
+            height: 100vh;
+            border-radius: 0;
+            box-shadow: none;
+        }
+        .image-preview {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        .image-preview img {
+            max-width: 100%;
+            max-height: calc(100vh - 120px);
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .converted-badge {
+            background: #f39c12;
+            color: #fff;
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        .text-preview {
+            background: #2d2d44;
+            border-radius: 8px;
+            padding: 30px;
+            margin: 0 auto;
+            max-width: 900px;
+            line-height: 1.8;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .text-preview h1, .text-preview h2, .text-preview h3 {
+            color: #a29bfe;
+            margin: 1em 0 0.5em;
+        }
+        .text-preview p {
+            margin: 0.8em 0;
+            color: #ccc;
+        }
+        .text-preview table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+            color: #ccc;
+        }
+        .text-preview table th {
+            background: #444;
+            color: #fff;
+            padding: 8px;
+            text-align: left;
+        }
+        .text-preview table td {
+            padding: 8px;
+            border-bottom: 1px solid #333;
+        }
+        .text-preview ul, .text-preview ol {
+            margin: 0.8em 0;
+            padding-left: 2em;
+            color: #ccc;
+        }
+        .text-preview li {
+            margin: 0.4em 0;
+        }
+        .error-box {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .error-box h2 { color: #e74c3c; margin-bottom: 15px; }
+        .error-box p { color: #888; font-size: 1.1rem; }
+        .loading {
+            text-align: center;
+            padding: 80px;
+            color: #888;
+            font-size: 1.2rem;
+        }
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    {% if hide_header %}
+    <style>
+        .preview-header, .preview-body { display: none; }
+        iframe { display: block; width: 100vw; height: 100vh; border: none; }
+        .image-preview img { max-width: 100vw; max-height: 100vh; }
+    </style>
+    <iframe src="/view/{{ file_id }}"></iframe>
+    {% else %}
+    <div class="preview-header">
+        <h1>
+            📄 {{ file_name|e }}
+            {% if is_converted %}
+            <span class="converted-badge">LibreOffice Convert Preview</span>
+            {% endif %}
+        </h1>
+        <div class="actions">
+            <a href="/download/{{ file_id }}?attach=1&t={{ now_timestamp }}" target="_blank">Download Original File</a>
+            <a href="javascript:window.close()">✕ Close</a>
+        </div>
+    </div>
+    <div class="preview-body">
+        {% if file_type == 'pdf' %}
+        <iframe src="/view/{{ file_id }}"></iframe>
+        {% elif file_type == 'image' %}
+        <div class="image-preview">
+            <img src="/view/{{ file_id }}" alt="{{ file_name|e }}">
+        </div>
+        {% elif content %}
+        <div class="text-preview">
+            {{ content|safe }}
+        </div>
+        {% else %}
+        <div class="loading">Loading File Content</div>
+        {% endif %}
+    </div>
+    {% endif %}
+</body>
+</html>
